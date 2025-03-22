@@ -409,82 +409,60 @@ async function fetchMultipleBusData() {
                     }
                 }
                 
-                if (data705.length >= 2) {
-                    // Parse time for calculations if needed
-                    function parseTimeToDate(timeStr) {
-                        const now = new Date();
-                        const result = new Date(now);
-                        
-                        if (timeStr === "--") {
-                            // No service, set a future time for display
-                            result.setMinutes(result.getMinutes() + 60);
-                            return result;
-                        }
-                        
-                        // Replace "Arriving" with "1 min"
-                        if (timeStr === "Arriving") {
-                            timeStr = "1 min";
-                        }
-                        
-                        // If it's a minutes format like "1 min" or "2 mins"
-                        if (timeStr.includes("min")) {
-                            const minutes = parseInt(timeStr.split(" ")[0]);
-                            if (!isNaN(minutes)) {
-                                result.setMinutes(result.getMinutes() + minutes);
-                                return result;
-                            }
-                        }
-                        
-                        // Handle other time formats
+                // Fix display strings: replace "Arriving" with "1 min"
+                data705.forEach(train => {
+                    if (train.time_en === "Arriving") {
+                        train.time_en = "1 min";
+                    }
+                });
+                
+                // Always update the row, even with partial data
+                const firstTimeStr = data705.length > 0 ? data705[0].time_en : 'n/a';
+                const secondTimeStr = data705.length > 1 ? data705[1].time_en : 'n/a';
+                
+                // Parse time for calculations if needed
+                function parseTimeToDate(timeStr) {
+                    const now = new Date();
+                    const result = new Date(now);
+                    
+                    if (timeStr === "--" || timeStr === "n/a") {
+                        // No service, set a future time for display
+                        result.setMinutes(result.getMinutes() + 60);
                         return result;
                     }
                     
-                    // Fix display strings: replace "Arriving" with "1 min"
-                    data705.forEach(train => {
-                        if (train.time_en === "Arriving") {
-                            train.time_en = "1 min";
+                    // Replace "Arriving" with "1 min"
+                    if (timeStr === "Arriving") {
+                        timeStr = "1 min";
+                    }
+                    
+                    // If it's a minutes format like "1 min" or "2 mins"
+                    if (timeStr.includes("min")) {
+                        const minutes = parseInt(timeStr.split(" ")[0]);
+                        if (!isNaN(minutes)) {
+                            result.setMinutes(result.getMinutes() + minutes);
+                            return result;
                         }
-                    });
-                    
-                    const firstEta = parseTimeToDate(data705[0].time_en);
-                    const secondEta = parseTimeToDate(data705[1].time_en);
-                    
-                    // For LRT, directly display the time string from the API
-                    updateLrtRowData(8, {
-                        route: '705',
-                        station: '天秀',
-                        firstEtaTime: firstEta,
-                        secondEtaTime: secondEta,
-                        firstTimeStr: data705[0].time_en,
-                        secondTimeStr: data705[1].time_en,
-                        type: 'train'
-                    });
-                } else if (data705.length === 1) {
-                    // Fix display strings: replace "Arriving" with "1 min"
-                    if (data705[0].time_en === "Arriving") {
-                        data705[0].time_en = "1 min";
                     }
                     
-                    const firstEta = parseTimeToDate(data705[0].time_en);
-                    
-                    updateLrtRowData(8, {
-                        route: '705',
-                        station: '天秀',
-                        firstEtaTime: firstEta,
-                        secondEtaTime: firstEta, // Placeholder
-                        firstTimeStr: data705[0].time_en,
-                        secondTimeStr: '--',
-                        type: 'train'
-                    });
-                } else {
-                    const timeCell = document.querySelector('.arrivals-table tbody tr:nth-child(9) td:nth-child(3)');
-                    const nextTimeCell = document.querySelector('.arrivals-table tbody tr:nth-child(9) td:nth-child(4)');
-                    
-                    if (timeCell && nextTimeCell) {
-                        timeCell.innerHTML = '<span class="minutes">No data</span>';
-                        nextTimeCell.innerHTML = '<span class="minutes">No data</span>';
-                    }
+                    // Handle other time formats
+                    return result;
                 }
+                
+                // Always create date objects, using defaults if needed
+                const firstEta = data705.length > 0 ? parseTimeToDate(data705[0].time_en) : new Date();
+                const secondEta = data705.length > 1 ? parseTimeToDate(data705[1].time_en) : new Date();
+                
+                // Always update the row
+                updateLrtRowData(8, {
+                    route: '705',
+                    station: '天秀',
+                    firstEtaTime: firstEta,
+                    secondEtaTime: secondEta,
+                    firstTimeStr: firstTimeStr,
+                    secondTimeStr: secondTimeStr,
+                    type: 'train'
+                });
                 
                 // Process route 706
                 const data706 = [];
@@ -498,53 +476,74 @@ async function fetchMultipleBusData() {
                     }
                 }
                 
-                if (data706.length >= 2) {
-                    // Fix display strings: replace "Arriving" with "1 min"
-                    data706.forEach(train => {
-                        if (train.time_en === "Arriving") {
-                            train.time_en = "1 min";
-                        }
-                    });
-                    
-                    const firstEta = parseTimeToDate(data706[0].time_en);
-                    const secondEta = parseTimeToDate(data706[1].time_en);
-                    
-                    updateLrtRowData(9, {
-                        route: '706',
-                        station: '天秀',
-                        firstEtaTime: firstEta,
-                        secondEtaTime: secondEta,
-                        firstTimeStr: data706[0].time_en,
-                        secondTimeStr: data706[1].time_en,
-                        type: 'train'
-                    });
-                } else if (data706.length === 1) {
-                    // Fix display strings: replace "Arriving" with "1 min"
-                    if (data706[0].time_en === "Arriving") {
-                        data706[0].time_en = "1 min";
+                // Fix display strings: replace "Arriving" with "1 min"
+                data706.forEach(train => {
+                    if (train.time_en === "Arriving") {
+                        train.time_en = "1 min";
                     }
-                    
-                    const firstEta = parseTimeToDate(data706[0].time_en);
-                    
-                    updateLrtRowData(9, {
-                        route: '706',
-                        station: '天秀',
-                        firstEtaTime: firstEta,
-                        secondEtaTime: firstEta, // Placeholder
-                        firstTimeStr: data706[0].time_en,
-                        secondTimeStr: '--',
-                        type: 'train'
-                    });
-                } else {
-                    const timeCell = document.querySelector('.arrivals-table tbody tr:nth-child(10) td:nth-child(3)');
-                    const nextTimeCell = document.querySelector('.arrivals-table tbody tr:nth-child(10) td:nth-child(4)');
-                    
-                    if (timeCell && nextTimeCell) {
-                        timeCell.innerHTML = '<span class="minutes">No data</span>';
-                        nextTimeCell.innerHTML = '<span class="minutes">No data</span>';
-                    }
-                }
+                });
+                
+                // Always update the row, even with partial data
+                const firstTimeStr706 = data706.length > 0 ? data706[0].time_en : 'n/a';
+                const secondTimeStr706 = data706.length > 1 ? data706[1].time_en : 'n/a';
+                
+                // Always create date objects, using defaults if needed
+                const firstEta706 = data706.length > 0 ? parseTimeToDate(data706[0].time_en) : new Date();
+                const secondEta706 = data706.length > 1 ? parseTimeToDate(data706[1].time_en) : new Date();
+                
+                // Always update the row
+                updateLrtRowData(9, {
+                    route: '706',
+                    station: '天秀',
+                    firstEtaTime: firstEta706,
+                    secondEtaTime: secondEta706,
+                    firstTimeStr: firstTimeStr706,
+                    secondTimeStr: secondTimeStr706,
+                    type: 'train'
+                });
+            } else {
+                // Handle case when no platform list is available
+                updateLrtRowData(8, {
+                    route: '705',
+                    station: '天秀',
+                    firstEtaTime: new Date(),
+                    secondEtaTime: new Date(),
+                    firstTimeStr: 'n/a',
+                    secondTimeStr: 'n/a',
+                    type: 'train'
+                });
+                
+                updateLrtRowData(9, {
+                    route: '706',
+                    station: '天秀',
+                    firstEtaTime: new Date(),
+                    secondEtaTime: new Date(),
+                    firstTimeStr: 'n/a',
+                    secondTimeStr: 'n/a',
+                    type: 'train'
+                });
             }
+        } else {
+            // Handle API error
+            updateLrtRowData(8, {
+                route: '705',
+                station: '天秀',
+                firstEtaTime: new Date(),
+                secondEtaTime: new Date(),
+                firstTimeStr: 'n/a',
+                secondTimeStr: 'n/a',
+                type: 'train'
+            });
+            
+            updateLrtRowData(9, {
+                route: '706',
+                station: '天秀',
+                firstEtaTime: new Date(),
+                secondEtaTime: new Date(),
+                firstTimeStr: 'n/a',
+                secondTimeStr: 'n/a',
+                type: 'train'
+            });
         }
         
         // Update last updated time
@@ -606,54 +605,70 @@ function updateLrtRowData(rowIndex, data) {
             timeCell.innerHTML = '';
             nextTimeCell.innerHTML = '';
             
-            // First arrival time - Directly use the time string from API
+            // First arrival time - Always show API time string if available, or "n/a" if not
             const minutesSpan = document.createElement('span');
             minutesSpan.className = 'minutes';
-            // Add 's' for pluralization if needed but prevent double "s"
-            if (data.firstTimeStr.includes('min')) {
-                // Check if it's "1 min"
-                if (data.firstTimeStr.startsWith('1 min')) {
-                    data.firstTimeStr = '1 min';
-                } else {
-                    // For other values, ensure it has only one "s" at the end
-                    const minValue = parseInt(data.firstTimeStr);
-                    if (!isNaN(minValue) && minValue > 1) {
-                        data.firstTimeStr = `${minValue} mins`;
+            
+            // If we have time data, format it properly
+            if (data.firstTimeStr && data.firstTimeStr !== '--') {
+                // Add 's' for pluralization if needed but prevent double "s"
+                if (data.firstTimeStr.includes('min')) {
+                    // Check if it's "1 min"
+                    if (data.firstTimeStr.startsWith('1 min')) {
+                        data.firstTimeStr = '1 min';
+                    } else {
+                        // For other values, ensure it has only one "s" at the end
+                        const minValue = parseInt(data.firstTimeStr);
+                        if (!isNaN(minValue) && minValue > 1) {
+                            data.firstTimeStr = `${minValue} mins`;
+                        }
                     }
                 }
+                minutesSpan.textContent = data.firstTimeStr;
+            } else {
+                // No data available
+                minutesSpan.textContent = 'n/a';
             }
-            minutesSpan.textContent = data.firstTimeStr; // Direct display of API time
+            
             timeCell.appendChild(minutesSpan);
             
-            // Only show full time if we have a valid date object
-            if (!data.firstTimeStr.includes('--')) {
+            // Only show full time if we have a valid date object and valid time string
+            if (data.firstTimeStr && data.firstTimeStr !== '--' && !data.firstTimeStr.includes('n/a')) {
                 const fullTimeSpan = document.createElement('span');
                 fullTimeSpan.className = 'full-time';
                 fullTimeSpan.textContent = formatArrivalTime(data.firstEtaTime).fullTime;
                 timeCell.appendChild(fullTimeSpan);
             }
             
-            // Second arrival time - Directly use the time string from API
+            // Second arrival time - Always show API time string if available, or "n/a" if not
             const nextMinutesSpan = document.createElement('span');
             nextMinutesSpan.className = 'minutes';
-            // Add 's' for pluralization if needed but prevent double "s"
-            if (data.secondTimeStr.includes('min')) {
-                // Check if it's "1 min"
-                if (data.secondTimeStr.startsWith('1 min')) {
-                    data.secondTimeStr = '1 min';
-                } else {
-                    // For other values, ensure it has only one "s" at the end
-                    const minValue = parseInt(data.secondTimeStr);
-                    if (!isNaN(minValue) && minValue > 1) {
-                        data.secondTimeStr = `${minValue} mins`;
+            
+            // If we have a second time, format it properly
+            if (data.secondTimeStr && data.secondTimeStr !== '--') {
+                // Add 's' for pluralization if needed but prevent double "s"
+                if (data.secondTimeStr.includes('min')) {
+                    // Check if it's "1 min"
+                    if (data.secondTimeStr.startsWith('1 min')) {
+                        data.secondTimeStr = '1 min';
+                    } else {
+                        // For other values, ensure it has only one "s" at the end
+                        const minValue = parseInt(data.secondTimeStr);
+                        if (!isNaN(minValue) && minValue > 1) {
+                            data.secondTimeStr = `${minValue} mins`;
+                        }
                     }
                 }
+                nextMinutesSpan.textContent = data.secondTimeStr;
+            } else {
+                // No data available for second time
+                nextMinutesSpan.textContent = 'n/a';
             }
-            nextMinutesSpan.textContent = data.secondTimeStr; // Direct display of API time
+            
             nextTimeCell.appendChild(nextMinutesSpan);
             
-            // Only show full time if we have a valid date object
-            if (!data.secondTimeStr.includes('--')) {
+            // Only show full time if we have a valid date object and valid time string
+            if (data.secondTimeStr && data.secondTimeStr !== '--' && !data.secondTimeStr.includes('n/a')) {
                 const nextFullTimeSpan = document.createElement('span');
                 nextFullTimeSpan.className = 'full-time';
                 nextFullTimeSpan.textContent = formatArrivalTime(data.secondEtaTime).fullTime;
