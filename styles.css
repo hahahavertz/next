@@ -1,0 +1,153 @@
+* {
+    box-sizing: border-box;
+    padding: 0;
+    margin: 0;
+    font-family: Helvetica, Arial, sans-serif;
+}
+
+body {
+    background: linear-gradient(to bottom, #030d1d, #051835);
+    color: #333;
+}
+
+.container {
+    max-width: 600px;
+    margin: 30px auto;
+    padding: 20px;
+    background-color: white;
+    border-radius: 10px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+}
+
+.table-container {
+    margin-bottom: 10px;
+    overflow-x: auto;
+}
+
+.arrivals-table {
+    width: 100%;
+    border-collapse: collapse;
+    border-spacing: 0;
+}
+
+.arrivals-table tr {
+    border-bottom: 1px solid #eee;
+}
+
+.arrivals-table tr:last-child {
+    border-bottom: none;
+}
+
+.arrivals-table td {
+    padding: 12px 8px;
+    vertical-align: top;
+    color: #333;
+}
+
+/* Route cell styling */
+.route-cell {
+    padding-right: 15px;
+}
+
+/* Route number styling with colored boxes */
+.route-number {
+    font-weight: bold;
+    font-size: 1.3rem;
+    margin-bottom: 5px;
+    display: inline-block;
+    padding: 3px 8px;
+    border-radius: 5px;
+    color: white;
+}
+
+/* Yellow boxes for 967, 969 */
+tr:nth-child(1) .route-number,
+tr:nth-child(2) .route-number {
+    background-color: #ffcc00;
+    border: 1px solid #e6b800;
+}
+
+/* Blue boxes for 705, 706 */
+tr:nth-child(9) .route-number,
+tr:nth-child(10) .route-number {
+    background-color: #0088ff;
+    border: 1px solid #0077dd;
+}
+
+/* Red boxes for the rest */
+tr:nth-child(3) .route-number,
+tr:nth-child(4) .route-number,
+tr:nth-child(5) .route-number,
+tr:nth-child(6) .route-number,
+tr:nth-child(7) .route-number,
+tr:nth-child(8) .route-number {
+    background-color: #ff3333;
+    border: 1px solid #dd0000;
+}
+
+.station-name {
+    font-size: 0.85rem;
+    color: #777;
+}
+
+/* Time styling */
+.time {
+    text-align: center;
+    width: 25%;
+}
+
+.minutes {
+    display: block;
+    font-size: 1.3rem;
+    font-weight: bold;
+    color: #333;
+}
+
+.full-time {
+    display: block;
+    font-size: 0.8rem;
+    color: #777;
+    margin-top: 4px;
+}
+
+.next-arrival {
+    color: #444;
+}
+
+.update-info {
+    text-align: right;
+    font-size: 0.8rem;
+    color: #777;
+    padding: 5px;
+}
+
+/* Route icons */
+.bus-icon::before {
+    content: "🚌";
+    margin-right: 5px;
+}
+
+.train-icon::before {
+    content: "🚆";
+    margin-right: 5px;
+}
+
+/* Responsive styles */
+@media (max-width: 500px) {
+    .container {
+        padding: 10px;
+        margin: 10px auto;
+    }
+    
+    .arrivals-table td {
+        padding: 10px 4px;
+    }
+    
+    .route-number {
+        font-size: 1.2rem;
+    }
+    
+    .minutes {
+        font-size: 1.1rem;
+    }
+}
