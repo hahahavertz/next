@@ -58,32 +58,26 @@ body {
     padding: 3px 8px;
     border-radius: 5px;
     color: white;
+    background-color: #ff3333; /* Default red for all routes */
+    border: 1px solid #dd0000;
 }
 
-/* Yellow boxes for 967, 969 */
+/* Yellow boxes for 967, 969, 969 (rows 1-3) */
 tr:nth-child(1) .route-number,
-tr:nth-child(2) .route-number {
+tr:nth-child(2) .route-number,
+tr:nth-child(3) .route-number {
     background-color: #ffcc00;
     border: 1px solid #e6b800;
 }
 
-/* Blue boxes for 705, 706 */
-tr:nth-child(9) .route-number,
-tr:nth-child(10) .route-number {
+/* Blue boxes for 705, 706 (rows 10-11) */
+tr:nth-child(10) .route-number,
+tr:nth-child(11) .route-number {
     background-color: #0088ff;
     border: 1px solid #0077dd;
 }
 
-/* Red boxes for the rest */
-tr:nth-child(3) .route-number,
-tr:nth-child(4) .route-number,
-tr:nth-child(5) .route-number,
-tr:nth-child(6) .route-number,
-tr:nth-child(7) .route-number,
-tr:nth-child(8) .route-number {
-    background-color: #ff3333;
-    border: 1px solid #dd0000;
-}
+/* Red boxes are handled by the default .route-number style */
 
 .station-name {
     font-size: 0.85rem;

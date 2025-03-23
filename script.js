@@ -87,14 +87,21 @@ async function fetchBusData() {
         
         const data = await response.json();
         
-        // Ensure we have at least two data points
-        if (data && data.data && data.data.length >= 2) {
+        // Process the data regardless of how many entries we have
+        if (data && data.data && data.data.length > 0) {
             // Process the data for the first entry
             const firstBusData = data.data[0];
-            const secondBusData = data.data[1];
-            
             const firstEtaTime = new Date(firstBusData.eta);
-            const secondEtaTime = new Date(secondBusData.eta);
+            
+            // Use second entry if available, otherwise use n/a
+            let secondEtaTime;
+            if (data.data.length > 1) {
+                secondEtaTime = new Date(data.data[1].eta);
+            } else {
+                // Create a fallback date (it won't be displayed, but needed for the function)
+                secondEtaTime = new Date(firstEtaTime);
+                secondEtaTime.setMinutes(secondEtaTime.getMinutes() + 30);
+            }
             
             // Update only the first row with the fetched data
             updateFirstRow({
@@ -102,10 +109,12 @@ async function fetchBusData() {
                 station: '慧景軒', // Using the requested station name
                 firstEtaTime: firstEtaTime,
                 secondEtaTime: secondEtaTime,
+                hasSecondEta: data.data.length > 1, // Flag to indicate if second ETA exists
                 type: 'bus'
             });
         } else {
-            console.warn('Not enough data points received from API');
+            // No data received
+            updateFirstRowNoData();
         }
         
         // Update last updated time
@@ -115,14 +124,19 @@ async function fetchBusData() {
         
     } catch (error) {
         console.error('Error fetching bus data:', error);
-        // In case of error, we can show a fallback message
-        const timeCell = document.querySelector('.arrivals-table tbody tr:first-child td:nth-child(3)');
-        const nextTimeCell = document.querySelector('.arrivals-table tbody tr:first-child td:nth-child(4)');
-        
-        if (timeCell && nextTimeCell) {
-            timeCell.innerHTML = '<span class="minutes">Data unavailable</span>';
-            nextTimeCell.innerHTML = '<span class="minutes">Data unavailable</span>';
-        }
+        // In case of error, show n/a
+        updateFirstRowNoData();
+    }
+}
+
+// Helper function when no data is available for first row
+function updateFirstRowNoData() {
+    const timeCell = document.querySelector('.arrivals-table tbody tr:first-child td:nth-child(2)');
+    const nextTimeCell = document.querySelector('.arrivals-table tbody tr:first-child td:nth-child(3)');
+    
+    if (timeCell && nextTimeCell) {
+        timeCell.innerHTML = '<span class="minutes">n/a</span>';
+        nextTimeCell.innerHTML = '<span class="minutes">n/a</span>';
     }
 }
 
@@ -144,8 +158,16 @@ function updateFirstRow(data) {
                 stationName.textContent = data.station;
             }
             
+            // Update first arrival time
             updateTimeCell(timeCell, data.firstEtaTime);
-            updateTimeCell(nextTimeCell, data.secondEtaTime);
+            
+            // Update second arrival time or show n/a
+            if (data.hasSecondEta) {
+                updateTimeCell(nextTimeCell, data.secondEtaTime);
+            } else {
+                nextTimeCell.innerHTML = '<span class="minutes">n/a</span>';
+            }
+            
             nextTimeCell.classList.add('next-arrival');
         }
     }
@@ -195,102 +217,229 @@ async function fetchMultipleBusData() {
     try {
         // First route already handled by fetchBusData()
         
-        // Fetch data for route 969
+        // Fetch data for new 969 route (慧景軒)
+        const api969HkUrl = 'https://rt.data.gov.hk/v2/transport/citybus/eta/CTB/003773/969';
+        const response969Hk = await fetch(api969HkUrl);
+        if (response969Hk.ok) {
+            const data969Hk = await response969Hk.json();
+            if (data969Hk && data969Hk.data && data969Hk.data.length > 0) {
+                const firstEta = new Date(data969Hk.data[0].eta);
+                
+                // Use second entry if available
+                let secondEta;
+                let hasSecondEta = false;
+                
+                if (data969Hk.data.length > 1) {
+                    secondEta = new Date(data969Hk.data[1].eta);
+                    hasSecondEta = true;
+                } else {
+                    // Fallback date (won't be displayed)
+                    secondEta = new Date(firstEta);
+                    secondEta.setMinutes(secondEta.getMinutes() + 30);
+                }
+                
+                updateRowData(1, {
+                    route: '969',
+                    station: '慧景軒',
+                    firstEtaTime: firstEta,
+                    secondEtaTime: secondEta,
+                    hasSecondEta: hasSecondEta,
+                    type: 'bus'
+                });
+            } else {
+                // No data
+                updateRowNoData(1);
+            }
+        } else {
+            updateRowNoData(1);
+        }
+        
+        // Fetch data for route 969 (晴彩樓) - was row 1, now row 2
         const api969Url = 'https://rt.data.gov.hk/v2/transport/citybus/eta/CTB/002059/969';
         const response969 = await fetch(api969Url);
         if (response969.ok) {
             const data969 = await response969.json();
-            if (data969 && data969.data && data969.data.length >= 2) {
+            if (data969 && data969.data && data969.data.length > 0) {
                 const firstEta = new Date(data969.data[0].eta);
-                const secondEta = new Date(data969.data[1].eta);
                 
-                updateRowData(1, {
+                // Use second entry if available
+                let secondEta;
+                let hasSecondEta = false;
+                
+                if (data969.data.length > 1) {
+                    secondEta = new Date(data969.data[1].eta);
+                    hasSecondEta = true;
+                } else {
+                    // Fallback date (won't be displayed)
+                    secondEta = new Date(firstEta);
+                    secondEta.setMinutes(secondEta.getMinutes() + 30);
+                }
+                
+                updateRowData(2, {
                     route: '969',
                     station: '晴彩樓',
                     firstEtaTime: firstEta,
                     secondEtaTime: secondEta,
+                    hasSecondEta: hasSecondEta,
                     type: 'bus'
                 });
+            } else {
+                // No data
+                updateRowNoData(2);
             }
+        } else {
+            updateRowNoData(2);
         }
         
-        // Fetch data for route 269M
+        // Fetch data for route 269M - was row 2, now row 3
         const api269Url = 'https://data.etabus.gov.hk/v1/transport/kmb/eta/797CC0222B9EFBEF/269M/1';
         const response269 = await fetch(api269Url);
         if (response269.ok) {
             const data269 = await response269.json();
-            if (data269 && data269.data && data269.data.length >= 2) {
+            if (data269 && data269.data && data269.data.length > 0) {
                 const firstEta = new Date(data269.data[0].eta);
-                const secondEta = new Date(data269.data[1].eta);
                 
-                updateRowData(2, {
+                // Use second entry if available
+                let secondEta;
+                let hasSecondEta = false;
+                
+                if (data269.data.length > 1) {
+                    secondEta = new Date(data269.data[1].eta);
+                    hasSecondEta = true;
+                } else {
+                    // Fallback date (won't be displayed)
+                    secondEta = new Date(firstEta);
+                    secondEta.setMinutes(secondEta.getMinutes() + 30);
+                }
+                
+                updateRowData(3, {
                     route: '269M',
                     station: '晴碧樓',
                     firstEtaTime: firstEta,
                     secondEtaTime: secondEta,
+                    hasSecondEta: hasSecondEta,
                     type: 'bus'
                 });
+            } else {
+                // No data
+                updateRowNoData(3);
             }
+        } else {
+            updateRowNoData(3);
         }
         
-        // Fetch data for route 265M
+        // Fetch data for route 265M - was row 3, now row 4
         const api265Url = 'https://data.etabus.gov.hk/v1/transport/kmb/eta/FE801C732EC6EA42/265M/1';
         const response265 = await fetch(api265Url);
         if (response265.ok) {
             const data265 = await response265.json();
-            if (data265 && data265.data && data265.data.length >= 2) {
+            if (data265 && data265.data && data265.data.length > 0) {
                 const firstEta = new Date(data265.data[0].eta);
-                const secondEta = new Date(data265.data[1].eta);
                 
-                updateRowData(3, {
+                // Use second entry if available
+                let secondEta;
+                let hasSecondEta = false;
+                
+                if (data265.data.length > 1) {
+                    secondEta = new Date(data265.data[1].eta);
+                    hasSecondEta = true;
+                } else {
+                    // Fallback date (won't be displayed)
+                    secondEta = new Date(firstEta);
+                    secondEta.setMinutes(secondEta.getMinutes() + 30);
+                }
+                
+                updateRowData(4, {
                     route: '265M',
                     station: '晴彩樓',
                     firstEtaTime: firstEta,
                     secondEtaTime: secondEta,
+                    hasSecondEta: hasSecondEta,
                     type: 'bus'
                 });
+            } else {
+                // No data
+                updateRowNoData(4);
             }
+        } else {
+            updateRowNoData(4);
         }
         
-        // Fetch data for route 269C
+        // Fetch data for route 269C - was row 4, now row 5
         const api269CUrl = 'https://data.etabus.gov.hk/v1/transport/kmb/eta/7BB395B6FE66E102/269C/1';
         const response269C = await fetch(api269CUrl);
         if (response269C.ok) {
             const data269C = await response269C.json();
-            if (data269C && data269C.data && data269C.data.length >= 2) {
+            if (data269C && data269C.data && data269C.data.length > 0) {
                 const firstEta = new Date(data269C.data[0].eta);
-                const secondEta = new Date(data269C.data[1].eta);
                 
-                updateRowData(4, {
+                // Use second entry if available
+                let secondEta;
+                let hasSecondEta = false;
+                
+                if (data269C.data.length > 1) {
+                    secondEta = new Date(data269C.data[1].eta);
+                    hasSecondEta = true;
+                } else {
+                    // Fallback date (won't be displayed)
+                    secondEta = new Date(firstEta);
+                    secondEta.setMinutes(secondEta.getMinutes() + 30);
+                }
+                
+                updateRowData(5, {
                     route: '269C',
                     station: '麗湖居',
                     firstEtaTime: firstEta,
                     secondEtaTime: secondEta,
+                    hasSecondEta: hasSecondEta,
                     type: 'bus'
                 });
+            } else {
+                // No data
+                updateRowNoData(5);
             }
+        } else {
+            updateRowNoData(5);
         }
         
-        // Fetch data for route 276B (慧景軒)
+        // Fetch data for route 276B (慧景軒) - was row 5, now row 6
         const api276BUrl = 'https://data.etabus.gov.hk/v1/transport/kmb/eta/A6C169DA579FC45B/276B/1';
         const response276B = await fetch(api276BUrl);
         if (response276B.ok) {
             const data276B = await response276B.json();
-            if (data276B && data276B.data && data276B.data.length >= 2) {
+            if (data276B && data276B.data && data276B.data.length > 0) {
                 const firstEta = new Date(data276B.data[0].eta);
-                const secondEta = new Date(data276B.data[1].eta);
                 
-                updateRowData(5, {
+                // Use second entry if available
+                let secondEta;
+                let hasSecondEta = false;
+                
+                if (data276B.data.length > 1) {
+                    secondEta = new Date(data276B.data[1].eta);
+                    hasSecondEta = true;
+                } else {
+                    // Fallback date (won't be displayed)
+                    secondEta = new Date(firstEta);
+                    secondEta.setMinutes(secondEta.getMinutes() + 30);
+                }
+                
+                updateRowData(6, {
                     route: '276B',
                     station: '慧景軒',
                     firstEtaTime: firstEta,
                     secondEtaTime: secondEta,
+                    hasSecondEta: hasSecondEta,
                     type: 'bus'
                 });
+            } else {
+                // No data
+                updateRowNoData(6);
             }
+        } else {
+            updateRowNoData(6);
         }
         
-        // Fetch data for route 276B (彩園總站) with destination filter
+        // Fetch data for route 276B (彩園總站) with destination filter - was row 6, now row 7
         const api276B2Url = 'https://data.etabus.gov.hk/v1/transport/kmb/eta/26A1D2969A15C3AF/276B/1';
         const response276B2 = await fetch(api276B2Url);
         if (response276B2.ok) {
@@ -300,97 +449,79 @@ async function fetchMultipleBusData() {
             if (data276B2 && data276B2.data) {
                 const filteredData = data276B2.data.filter(item => item.dest_tc === '天富');
                 
-                if (filteredData.length >= 2) {
+                if (filteredData.length > 0) {
                     const firstEta = new Date(filteredData[0].eta);
-                    const secondEta = new Date(filteredData[1].eta);
                     
-                    updateRowData(6, {
+                    // Use second entry if available
+                    let secondEta;
+                    let hasSecondEta = false;
+                    
+                    if (filteredData.length > 1) {
+                        secondEta = new Date(filteredData[1].eta);
+                        hasSecondEta = true;
+                    } else {
+                        // Fallback date (won't be displayed)
+                        secondEta = new Date(firstEta);
+                        secondEta.setMinutes(secondEta.getMinutes() + 30);
+                    }
+                    
+                    updateRowData(7, {
                         route: '276B',
                         station: '彩園總站',
                         firstEtaTime: firstEta,
                         secondEtaTime: secondEta,
+                        hasSecondEta: hasSecondEta,
                         type: 'bus'
                     });
-                } else if (filteredData.length === 1) {
-                    // If only one "天富" destination is found
-                    const firstEta = new Date(filteredData[0].eta);
-                    
-                    // Create a fallback second time (just for display - 30 min later)
-                    const secondEta = new Date(firstEta);
-                    secondEta.setMinutes(secondEta.getMinutes() + 30);
-                    
-                    updateRowData(6, {
-                        route: '276B',
-                        station: '彩園總站',
-                        firstEtaTime: firstEta,
-                        secondEtaTime: secondEta,
-                        type: 'bus'
-                    });
-                    
-                    console.warn('Only one arrival with destination 天富 found for 276B at 彩園總站');
                 } else {
                     // No "天富" destinations found
-                    console.warn('No arrivals with destination 天富 found for 276B at 彩園總站');
-                    
-                    const timeCell = document.querySelector('.arrivals-table tbody tr:nth-child(7) td:nth-child(3)');
-                    const nextTimeCell = document.querySelector('.arrivals-table tbody tr:nth-child(7) td:nth-child(4)');
-                    
-                    if (timeCell && nextTimeCell) {
-                        timeCell.innerHTML = '<span class="minutes">No data</span>';
-                        nextTimeCell.innerHTML = '<span class="minutes">No data</span>';
-                    }
+                    updateRowNoData(7);
                 }
-            }
-        }
-        
-        // Fetch data for route 69
-        const api69Url = 'https://data.etabus.gov.hk/v1/transport/kmb/eta/79C0E2525F4B50FF/69/1';
-        const response69 = await fetch(api69Url);
-        if (response69.ok) {
-            const data69 = await response69.json();
-            if (data69 && data69.data && data69.data.length >= 2) {
-                const firstEta = new Date(data69.data[0].eta);
-                const secondEta = new Date(data69.data[1].eta);
-                
-                updateRowData(7, {
-                    route: '69',
-                    station: '濕地公園路',
-                    firstEtaTime: firstEta,
-                    secondEtaTime: secondEta,
-                    type: 'bus'
-                });
-            } else if (data69 && data69.data && data69.data.length === 1) {
-                // If only one arrival is found
-                const firstEta = new Date(data69.data[0].eta);
-                
-                // Create a fallback second time (just for display - 30 min later)
-                const secondEta = new Date(firstEta);
-                secondEta.setMinutes(secondEta.getMinutes() + 30);
-                
-                updateRowData(7, {
-                    route: '69',
-                    station: '濕地公園路',
-                    firstEtaTime: firstEta,
-                    secondEtaTime: secondEta,
-                    type: 'bus'
-                });
-                
-                console.warn('Only one arrival found for 69 at 濕地公園路');
             } else {
-                // No arrivals found
-                console.warn('No arrivals found for 69 at 濕地公園路');
-                
-                const timeCell = document.querySelector('.arrivals-table tbody tr:nth-child(8) td:nth-child(3)');
-                const nextTimeCell = document.querySelector('.arrivals-table tbody tr:nth-child(8) td:nth-child(4)');
-                
-                if (timeCell && nextTimeCell) {
-                    timeCell.innerHTML = '<span class="minutes">No data</span>';
-                    nextTimeCell.innerHTML = '<span class="minutes">No data</span>';
-                }
+                updateRowNoData(7);
             }
+        } else {
+            updateRowNoData(7);
         }
         
-        // Fetch data for LRT routes 705 and 706
+        // Fetch data for route 265B - was row 7, now row 8
+        const api265BUrl = 'https://data.etabus.gov.hk/v1/transport/kmb/eta/FE801C732EC6EA42/265B/1';
+        const response265B = await fetch(api265BUrl);
+        if (response265B.ok) {
+            const data265B = await response265B.json();
+            if (data265B && data265B.data && data265B.data.length > 0) {
+                const firstEta = new Date(data265B.data[0].eta);
+                
+                // Use second entry if available
+                let secondEta;
+                let hasSecondEta = false;
+                
+                if (data265B.data.length > 1) {
+                    secondEta = new Date(data265B.data[1].eta);
+                    hasSecondEta = true;
+                } else {
+                    // Fallback date (won't be displayed)
+                    secondEta = new Date(firstEta);
+                    secondEta.setMinutes(secondEta.getMinutes() + 30);
+                }
+                
+                updateRowData(8, {
+                    route: '265B',
+                    station: '晴彩樓',
+                    firstEtaTime: firstEta,
+                    secondEtaTime: secondEta,
+                    hasSecondEta: hasSecondEta,
+                    type: 'bus'
+                });
+            } else {
+                // No data
+                updateRowNoData(8);
+            }
+        } else {
+            updateRowNoData(8);
+        }
+        
+        // Fetch data for LRT routes 705 and 706 - were rows 8 and 9, now rows 9 and 10
         const apiLrtUrl = 'https://rt.data.gov.hk/v1/transport/mtr/lrt/getSchedule?station_id=520';
         const responseLrt = await fetch(apiLrtUrl);
         if (responseLrt.ok) {
@@ -408,17 +539,6 @@ async function fetchMultipleBusData() {
                         }
                     }
                 }
-                
-                // Fix display strings: replace "Arriving" with "1 min"
-                data705.forEach(train => {
-                    if (train.time_en === "Arriving") {
-                        train.time_en = "1 min";
-                    }
-                });
-                
-                // Always update the row, even with partial data
-                const firstTimeStr = data705.length > 0 ? data705[0].time_en : 'n/a';
-                const secondTimeStr = data705.length > 1 ? data705[1].time_en : 'n/a';
                 
                 // Parse time for calculations if needed
                 function parseTimeToDate(timeStr) {
@@ -449,12 +569,23 @@ async function fetchMultipleBusData() {
                     return result;
                 }
                 
-                // Always create date objects, using defaults if needed
+                // Fix display strings: replace "Arriving" with "1 min"
+                data705.forEach(train => {
+                    if (train.time_en === "Arriving") {
+                        train.time_en = "1 min";
+                    }
+                });
+                
+                // Get time data for route 705
+                const firstTimeStr = data705.length > 0 ? data705[0].time_en : 'n/a';
+                const secondTimeStr = data705.length > 1 ? data705[1].time_en : 'n/a';
+                
+                // Create date objects for calculations
                 const firstEta = data705.length > 0 ? parseTimeToDate(data705[0].time_en) : new Date();
                 const secondEta = data705.length > 1 ? parseTimeToDate(data705[1].time_en) : new Date();
                 
-                // Always update the row
-                updateLrtRowData(8, {
+                // Update row for route 705
+                updateLrtRowData(9, {
                     route: '705',
                     station: '天秀',
                     firstEtaTime: firstEta,
@@ -483,16 +614,16 @@ async function fetchMultipleBusData() {
                     }
                 });
                 
-                // Always update the row, even with partial data
+                // Get time data for route 706
                 const firstTimeStr706 = data706.length > 0 ? data706[0].time_en : 'n/a';
                 const secondTimeStr706 = data706.length > 1 ? data706[1].time_en : 'n/a';
                 
-                // Always create date objects, using defaults if needed
+                // Create date objects for calculations
                 const firstEta706 = data706.length > 0 ? parseTimeToDate(data706[0].time_en) : new Date();
                 const secondEta706 = data706.length > 1 ? parseTimeToDate(data706[1].time_en) : new Date();
                 
-                // Always update the row
-                updateLrtRowData(9, {
+                // Update row for route 706
+                updateLrtRowData(10, {
                     route: '706',
                     station: '天秀',
                     firstEtaTime: firstEta706,
@@ -502,48 +633,14 @@ async function fetchMultipleBusData() {
                     type: 'train'
                 });
             } else {
-                // Handle case when no platform list is available
-                updateLrtRowData(8, {
-                    route: '705',
-                    station: '天秀',
-                    firstEtaTime: new Date(),
-                    secondEtaTime: new Date(),
-                    firstTimeStr: 'n/a',
-                    secondTimeStr: 'n/a',
-                    type: 'train'
-                });
-                
-                updateLrtRowData(9, {
-                    route: '706',
-                    station: '天秀',
-                    firstEtaTime: new Date(),
-                    secondEtaTime: new Date(),
-                    firstTimeStr: 'n/a',
-                    secondTimeStr: 'n/a',
-                    type: 'train'
-                });
+                // No platform list available
+                updateRowNoData(9); // For route 705
+                updateRowNoData(10); // For route 706
             }
         } else {
-            // Handle API error
-            updateLrtRowData(8, {
-                route: '705',
-                station: '天秀',
-                firstEtaTime: new Date(),
-                secondEtaTime: new Date(),
-                firstTimeStr: 'n/a',
-                secondTimeStr: 'n/a',
-                type: 'train'
-            });
-            
-            updateLrtRowData(9, {
-                route: '706',
-                station: '天秀',
-                firstEtaTime: new Date(),
-                secondEtaTime: new Date(),
-                firstTimeStr: 'n/a',
-                secondTimeStr: 'n/a',
-                type: 'train'
-            });
+            // API error
+            updateRowNoData(9); // For route 705
+            updateRowNoData(10); // For route 706
         }
         
         // Update last updated time
@@ -553,6 +650,22 @@ async function fetchMultipleBusData() {
         
     } catch (error) {
         console.error('Error fetching multiple bus data:', error);
+    }
+}
+
+// Helper function for when no data is available for a specific row
+function updateRowNoData(rowIndex) {
+    const tbody = document.querySelector('.arrivals-table tbody');
+    const row = tbody.children[rowIndex];
+    
+    if (row) {
+        const timeCell = row.querySelector('td:nth-child(2)');
+        const nextTimeCell = row.querySelector('td:nth-child(3)');
+        
+        if (timeCell && nextTimeCell) {
+            timeCell.innerHTML = '<span class="minutes">n/a</span>';
+            nextTimeCell.innerHTML = '<span class="minutes">n/a</span>';
+        }
     }
 }
 
@@ -575,8 +688,16 @@ function updateRowData(rowIndex, data) {
                 stationName.textContent = data.station;
             }
             
+            // Update first arrival time
             updateTimeCell(timeCell, data.firstEtaTime);
-            updateTimeCell(nextTimeCell, data.secondEtaTime);
+            
+            // Update second arrival time or show n/a
+            if (data.hasSecondEta) {
+                updateTimeCell(nextTimeCell, data.secondEtaTime);
+            } else {
+                nextTimeCell.innerHTML = '<span class="minutes">n/a</span>';
+            }
+            
             nextTimeCell.classList.add('next-arrival');
         }
     }
