@@ -1087,23 +1087,39 @@ function updateRowData(rowIndex, data) {
             }
             
             // Set the minutes display with appropriate formatting
-            if (diffSeconds < 30) {
-                // Less than 30 seconds - show "now" in green
-                minutesElements[0].textContent = 'now';
-                minutesElements[0].classList.add('now-text');
-                minutesElements[0].classList.remove('na-text');
-            } else if (diffSeconds < 120) {
-                // Between 30-119 seconds - show "1 min" in normal color
-                minutesElements[0].textContent = '1 min';
-                minutesElements[0].classList.remove('now-text');
-                minutesElements[0].classList.remove('na-text');
+            if (data.route === 'K73' || data.route === '967' || data.route === '969') {
+                // Special handling for K73, 967, and 969 routes
+                if (diffSeconds < 60) {
+                    // Less than 60 seconds - show "now" in green
+                    minutesElements[0].textContent = 'now';
+                    minutesElements[0].classList.add('now-text');
+                    minutesElements[0].classList.remove('na-text');
+                } else {
+                    // Round to nearest minute
+                    const minutesUntil = Math.round(diffSeconds / 60);
+                    minutesElements[0].textContent = `${minutesUntil} ${minutesUntil === 1 ? 'min' : 'mins'}`;
+                    minutesElements[0].classList.remove('now-text');
+                    minutesElements[0].classList.remove('na-text');
+                }
             } else {
-                // 2 minutes or more - calculate with proper rounding
-                // Floor division by 60 then add 1 to ensure we correctly show "2 min" 
-                const minutesUntil = Math.floor(diffSeconds / 60) + (diffSeconds % 60 > 0 ? 1 : 0);
-                minutesElements[0].textContent = `${minutesUntil} ${minutesUntil === 1 ? 'min' : 'mins'}`;
-                minutesElements[0].classList.remove('now-text');
-                minutesElements[0].classList.remove('na-text');
+                // Original logic for other routes
+                if (diffSeconds < 30) {
+                    // Less than 30 seconds - show "now" in green
+                    minutesElements[0].textContent = 'now';
+                    minutesElements[0].classList.add('now-text');
+                    minutesElements[0].classList.remove('na-text');
+                } else if (diffSeconds < 120) {
+                    // Between 30-119 seconds - show "1 min" in normal color
+                    minutesElements[0].textContent = '1 min';
+                    minutesElements[0].classList.remove('now-text');
+                    minutesElements[0].classList.remove('na-text');
+                } else {
+                    // 2 minutes or more - calculate with proper rounding
+                    const minutesUntil = Math.floor(diffSeconds / 60) + (diffSeconds % 60 > 0 ? 1 : 0);
+                    minutesElements[0].textContent = `${minutesUntil} ${minutesUntil === 1 ? 'min' : 'mins'}`;
+                    minutesElements[0].classList.remove('now-text');
+                    minutesElements[0].classList.remove('na-text');
+                }
             }
             
             // Add full time display in HH:MM:SS format
@@ -1128,23 +1144,39 @@ function updateRowData(rowIndex, data) {
             const diffSeconds = Math.floor(diffMs / 1000);
             
             // Set the minutes display with appropriate formatting
-            if (diffSeconds < 30) {
-                // Less than 30 seconds - show "now" in green
-                minutesElements[1].textContent = 'now';
-                minutesElements[1].classList.add('now-text');
-                minutesElements[1].classList.remove('na-text');
-            } else if (diffSeconds < 120) {
-                // Between 30-119 seconds - show "1 min" in normal color
-                minutesElements[1].textContent = '1 min';
-                minutesElements[1].classList.remove('now-text');
-                minutesElements[1].classList.remove('na-text');
+            if (data.route === 'K73' || data.route === '967' || data.route === '969') {
+                // Special handling for K73, 967, and 969 routes
+                if (diffSeconds < 60) {
+                    // Less than 60 seconds - show "now" in green
+                    minutesElements[1].textContent = 'now';
+                    minutesElements[1].classList.add('now-text');
+                    minutesElements[1].classList.remove('na-text');
+                } else {
+                    // Round to nearest minute
+                    const minutesUntil = Math.round(diffSeconds / 60);
+                    minutesElements[1].textContent = `${minutesUntil} ${minutesUntil === 1 ? 'min' : 'mins'}`;
+                    minutesElements[1].classList.remove('now-text');
+                    minutesElements[1].classList.remove('na-text');
+                }
             } else {
-                // 2 minutes or more - calculate with proper rounding
-                // Floor division by 60 then add 1 to ensure we correctly show "2 min"
-                const minutesUntil = Math.floor(diffSeconds / 60) + (diffSeconds % 60 > 0 ? 1 : 0);
-                minutesElements[1].textContent = `${minutesUntil} ${minutesUntil === 1 ? 'min' : 'mins'}`;
-                minutesElements[1].classList.remove('now-text');
-                minutesElements[1].classList.remove('na-text');
+                // Original logic for other routes
+                if (diffSeconds < 30) {
+                    // Less than 30 seconds - show "now" in green
+                    minutesElements[1].textContent = 'now';
+                    minutesElements[1].classList.add('now-text');
+                    minutesElements[1].classList.remove('na-text');
+                } else if (diffSeconds < 120) {
+                    // Between 30-119 seconds - show "1 min" in normal color
+                    minutesElements[1].textContent = '1 min';
+                    minutesElements[1].classList.remove('now-text');
+                    minutesElements[1].classList.remove('na-text');
+                } else {
+                    // 2 minutes or more - calculate with proper rounding
+                    const minutesUntil = Math.floor(diffSeconds / 60) + (diffSeconds % 60 > 0 ? 1 : 0);
+                    minutesElements[1].textContent = `${minutesUntil} ${minutesUntil === 1 ? 'min' : 'mins'}`;
+                    minutesElements[1].classList.remove('now-text');
+                    minutesElements[1].classList.remove('na-text');
+                }
             }
             
             // Add full time display in HH:MM:SS format
