@@ -74,27 +74,50 @@ function createTimeElement(etaTime, className) {
 }
 
 // Function to update time cell with minutes and full time
-function updateTimeCell(cell, etaTime) {
-    const timeInfo = formatArrivalTime(etaTime);
-    
-    // Clear existing content
+function updateTimeCell(cell, etaTime, nowThresholdSeconds = 30) {
     cell.innerHTML = '';
     
-    const minutesSpan = document.createElement('span');
-    minutesSpan.className = 'minutes';
-    minutesSpan.textContent = timeInfo.minutes;
-    
-    // Add 'now-text' class for immediate arrivals
-    if (timeInfo.minutes === 'now') {
-        minutesSpan.classList.add('now-text');
+    if (etaTime) {
+        const now = new Date();
+        const diffMs = Math.max(0, etaTime - now); // Ensure non-negative
+        const diffSeconds = Math.floor(diffMs / 1000);
+        
+        const minutesSpan = document.createElement('span');
+        minutesSpan.className = 'minutes';
+        
+        // Use the passed threshold (default 30 seconds) for determining "now"
+        if (diffSeconds < nowThresholdSeconds) {
+            minutesSpan.textContent = 'now';
+            minutesSpan.classList.add('now-text');
+        } else if (diffSeconds < 120) {
+            minutesSpan.textContent = '1 min';
+        } else {
+            const minutesUntil = Math.ceil(diffMs / 60000);
+            minutesSpan.textContent = `${minutesUntil} mins`;
+        }
+        
+        cell.appendChild(minutesSpan);
+        
+        // Add full time
+        const fullTimeSpan = document.createElement('span');
+        fullTimeSpan.className = 'full-time';
+        
+        const hours = etaTime.getHours().toString().padStart(2, '0');
+        const minutes = etaTime.getMinutes().toString().padStart(2, '0');
+        const seconds = etaTime.getSeconds().toString().padStart(2, '0');
+        fullTimeSpan.textContent = `${hours}:${minutes}:${seconds}`;
+        
+        cell.appendChild(fullTimeSpan);
+    } else {
+        // No data
+        const minutesSpan = document.createElement('span');
+        minutesSpan.className = 'minutes na-text';
+        minutesSpan.textContent = 'n/a';
+        minutesSpan.style.color = '#cc0000'; // Dark red
+        minutesSpan.style.fontWeight = 'bold';
+        minutesSpan.classList.remove('now-text'); // Ensure no "now" styling
+        cell.appendChild(minutesSpan);
     }
-    
-    const fullTimeSpan = document.createElement('span');
-    fullTimeSpan.className = 'full-time';
-    fullTimeSpan.textContent = timeInfo.fullTime;
-    
-    cell.appendChild(minutesSpan);
-    cell.appendChild(fullTimeSpan);
 }
 
 // Function to fetch bus data
@@ -126,7 +149,7 @@ async function fetchBusData() {
                 secondEtaTime.setMinutes(secondEtaTime.getMinutes() + 30);
             }
             
-            // Update 967 row (now row 4) with the fetched data
+            // Update 967 row (row 4) with the fetched data
             update967Row({
                 route: firstBusData.route,
                 station: '慧景軒', // Using the requested station name
@@ -158,8 +181,8 @@ function updateFirstRowNoData() {
     const nextTimeCell = document.querySelector('.arrivals-table tbody tr:first-child td:nth-child(3)');
     
     if (timeCell && nextTimeCell) {
-        timeCell.innerHTML = '<span class="minutes na-text">n/a</span>';
-        nextTimeCell.innerHTML = '<span class="minutes na-text">n/a</span>';
+        timeCell.innerHTML = '<span class="minutes na-text" style="color:#cc0000;font-weight:bold;">n/a</span>';
+        nextTimeCell.innerHTML = '<span class="minutes na-text" style="color:#cc0000;font-weight:bold;">n/a</span>';
     }
 }
 
@@ -204,8 +227,8 @@ function update967RowNoData() {
         const nextTimeCell = row.querySelector('td:nth-child(3)');
         
         if (timeCell && nextTimeCell) {
-            timeCell.innerHTML = '<span class="minutes na-text">n/a</span>';
-            nextTimeCell.innerHTML = '<span class="minutes na-text">n/a</span>';
+            timeCell.innerHTML = '<span class="minutes na-text" style="color:#cc0000;font-weight:bold;">n/a</span>';
+            nextTimeCell.innerHTML = '<span class="minutes na-text" style="color:#cc0000;font-weight:bold;">n/a</span>';
         }
     }
 }
@@ -249,6 +272,14 @@ function updateTable(data) {
     document.getElementById('last-update').textContent = timeString;
 }
 
+// Add these variables to store the last valid K73 data
+let lastValidK73Data = null;
+let lastK73UpdateTime = null;
+const K73_DATA_STALE_THRESHOLD_MS = 30000; // 30 seconds threshold before considering data stale
+
+// Add this new variable to store second bus arrival time for quick shift
+let lastK73SecondBusData = null;
+
 // Function to fetch multiple bus data
 async function fetchMultipleBusData() {
     try {
@@ -259,145 +290,56 @@ async function fetchMultipleBusData() {
             const dataLrt = await responseLrt.json();
             
             if (dataLrt && dataLrt.platform_list) {
-                // Process route 705
-                const data705 = [];
+                // Process route 705 and 706
+                let route705Data = { found: false, firstTime: 'n/a', secondTime: 'n/a' };
+                let route706Data = { found: false, firstTime: 'n/a', secondTime: 'n/a' };
                 
-                // Find items with route_no 705
+                // Loop through all platforms to find 705 and 706 data
                 for (const platform of dataLrt.platform_list) {
-                    for (const train of platform.route_list) {
-                        if (train.route_no === "705") {
-                            data705.push(train);
-                        }
-                    }
-                }
-                
-                // Parse time for calculations if needed
-                function parseTimeToDate(timeStr) {
-                    // Create a reference to current time
-                    const now = new Date();
-                    const result = new Date(now);
-                    
-                    // Handle empty or invalid inputs
-                    if (!timeStr || timeStr === '--' || timeStr === 'n/a') {
-                        // For display purposes only - not actual arrival time
-                        result.setMinutes(result.getMinutes() + 60);
-                        return result;
-                    }
-                    
-                    // Handle special cases for immediate arrivals
-                    if (timeStr === 'Arriving' || timeStr === '-') {
-                        // Arriving now (less than 60 seconds)
-                        result.setSeconds(result.getSeconds() + 30);
-                        return result;
-                    }
-                    
-                    // Handle minute-based formats like "1 min" or "5 mins"
-                    if (timeStr.includes('min')) {
-                        const minuteMatch = timeStr.match(/(\d+)\s*min/);
-                        if (minuteMatch && minuteMatch[1]) {
-                            const minutes = parseInt(minuteMatch[1], 10);
+                    if (platform.route_list) {
+                        // Find all entries for route 705
+                        const route705Entries = platform.route_list.filter(train => train.route_no === "705");
+                        if (route705Entries.length > 0) {
+                            route705Data.found = true;
+                            route705Data.firstTime = route705Entries[0].time_en;
                             
-                            if (!isNaN(minutes)) {
-                                if (minutes === 1) {
-                                    // "1 min" should represent between 60-119 seconds
-                                    // Using 90 seconds (1.5 minutes) ensures it displays correctly
-                                    result.setSeconds(result.getSeconds() + 90);
-                                } else {
-                                    // For 2+ minutes, add the exact minute count
-                                    result.setMinutes(result.getMinutes() + minutes);
-                                }
-                                return result;
+                            // Get the second time if available
+                            if (route705Entries.length > 1) {
+                                route705Data.secondTime = route705Entries[1].time_en;
                             }
                         }
-                    }
-                    
-                    // Handle time formats like "12:34" or "12:34:56"
-                    const timeMatch = timeStr.match(/(\d+):(\d+)(?::(\d+))?/);
-                    if (timeMatch) {
-                        const hours = parseInt(timeMatch[1], 10);
-                        const minutes = parseInt(timeMatch[2], 10);
-                        const seconds = timeMatch[3] ? parseInt(timeMatch[3], 10) : 0;
                         
-                        if (!isNaN(hours) && !isNaN(minutes)) {
-                            result.setHours(hours, minutes, seconds, 0);
+                        // Find all entries for route 706
+                        const route706Entries = platform.route_list.filter(train => train.route_no === "706");
+                        if (route706Entries.length > 0) {
+                            route706Data.found = true;
+                            route706Data.firstTime = route706Entries[0].time_en;
                             
-                            // If the resulting time is in the past, add 24 hours
-                            if (result < now) {
-                                result.setDate(result.getDate() + 1);
+                            // Get the second time if available
+                            if (route706Entries.length > 1) {
+                                route706Data.secondTime = route706Entries[1].time_en;
                             }
-                            
-                            return result;
                         }
                     }
-                    
-                    // For any unhandled format, return the current time plus 5 minutes
-                    // as a fallback (this shouldn't happen with proper data)
-                    console.warn(`Unrecognized time format: "${timeStr}", using fallback value`);
-                    result.setMinutes(result.getMinutes() + 5);
-                    return result;
                 }
                 
-                // Fix display strings: replace "Arriving" with "1 min"
-                data705.forEach(train => {
-                    if (train.time_en === "Arriving") {
-                        train.time_en = "1 min";
-                    }
-                });
+                // Debug log to verify the data being processed
+                console.log("LRT 705 data:", route705Data);
+                console.log("LRT 706 data:", route706Data);
                 
-                // Get time data for route 705
-                const firstTimeStr = data705.length > 0 ? data705[0].time_en : 'n/a';
-                const secondTimeStr = data705.length > 1 ? data705[1].time_en : 'n/a';
-                
-                // Create date objects for calculations
-                const firstEta = data705.length > 0 ? parseTimeToDate(data705[0].time_en) : new Date();
-                const secondEta = data705.length > 1 ? parseTimeToDate(data705[1].time_en) : new Date();
-                
-                // Update row for route 705 (now row 1)
-                updateFirstRow({
+                // Update rows with the data we found
+                updateLrtRow(0, {
                     route: '705',
                     station: '天秀',
-                    firstEtaTime: firstEta,
-                    secondEtaTime: secondEta,
-                    hasSecondEta: data705.length > 1,
-                    type: 'train'
+                    firstTime: route705Data.firstTime,
+                    secondTime: route705Data.secondTime
                 });
                 
-                // Process route 706
-                const data706 = [];
-                
-                // Find items with route_no 706
-                for (const platform of dataLrt.platform_list) {
-                    for (const train of platform.route_list) {
-                        if (train.route_no === "706") {
-                            data706.push(train);
-                        }
-                    }
-                }
-                
-                // Fix display strings: replace "Arriving" with "1 min"
-                data706.forEach(train => {
-                    if (train.time_en === "Arriving") {
-                        train.time_en = "1 min";
-                    }
-                });
-                
-                // Get time data for route 706
-                const firstTimeStr706 = data706.length > 0 ? data706[0].time_en : 'n/a';
-                const secondTimeStr706 = data706.length > 1 ? data706[1].time_en : 'n/a';
-                
-                // Create date objects for calculations
-                const firstEta706 = data706.length > 0 ? parseTimeToDate(data706[0].time_en) : new Date();
-                const secondEta706 = data706.length > 1 ? parseTimeToDate(data706[1].time_en) : new Date();
-                
-                // Update row for route 706 (now row 2)
-                updateLrtRowData(1, {
+                updateLrtRow(1, {
                     route: '706',
                     station: '天秀',
-                    firstEtaTime: firstEta706,
-                    secondEtaTime: secondEta706,
-                    firstTimeStr: firstTimeStr706,
-                    secondTimeStr: secondTimeStr706,
-                    type: 'train'
+                    firstTime: route706Data.firstTime,
+                    secondTime: route706Data.secondTime
                 });
             } else {
                 // No platform list available
@@ -426,99 +368,196 @@ async function fetchMultipleBusData() {
         if (responseK73.ok) {
             try {
                 const dataK73 = await responseK73.json();
-                console.log("K73 raw API response:", dataK73);
+                console.log("K73 data refreshed:", new Date().toISOString());
                 
                 let foundK73Data = false;
+                let foundOutboundBuses = false;
                 
                 if (dataK73 && dataK73.busStop && Array.isArray(dataK73.busStop)) {
-                    // Target is "天晴邨晴碧樓" / "Ching Pik House, Tin Ching Estate"
-                    // with station ID K73-U040, direction O, sequence 4
                     const TARGET_STOP_ID = 'K73-U040';
-                    
-                    // Find stop with our target ID
                     let targetStop = dataK73.busStop.find(stop => stop.busStopId === TARGET_STOP_ID);
-                    console.log("Found K73-U040 stop:", targetStop ? "yes" : "no");
                     
                     if (targetStop && targetStop.bus && Array.isArray(targetStop.bus)) {
                         // Filter for buses in the outbound direction (YLW = Yuen Long West)
-                        // The API uses lineRef with suffix "K73_YLW" for this direction
                         const outboundBuses = targetStop.bus.filter(bus => 
                             bus.lineRef && (bus.lineRef.includes('YLW') || bus.direction === 'O')
                         );
                         
-                        console.log("K73 outbound buses at U040:", outboundBuses);
+                        foundOutboundBuses = outboundBuses.length > 0;
                         
-                        if (outboundBuses.length > 0) {
-                            // Sort by departure time
+                        if (foundOutboundBuses) {
+                            // Sort by arrival time (not departure time)
                             const sortedBuses = [...outboundBuses].sort((a, b) => {
-                                const timeA = parseInt(a.departureTimeInSecond, 10) || 999999;
-                                const timeB = parseInt(b.departureTimeInSecond, 10) || 999999;
+                                // Use arrivalTimeInSecond instead of departureTimeInSecond to match official app
+                                const timeA = parseInt(a.arrivalTimeInSecond, 10) || parseInt(a.departureTimeInSecond, 10) || 999999;
+                                const timeB = parseInt(b.arrivalTimeInSecond, 10) || parseInt(b.departureTimeInSecond, 10) || 999999;
                                 return timeA - timeB;
                             });
-                            
-                            // Log the sorted buses with their departure times
-                            console.log("K73 sorted buses:", 
-                                sortedBuses.map(bus => `${bus.departureTimeText} (${bus.departureTimeInSecond}s)`));
                             
                             // Current time reference
                             const now = new Date();
                             
-                            // First bus
-                            if (sortedBuses.length > 0) {
-                                const firstDepartureSeconds = parseInt(sortedBuses[0].departureTimeInSecond, 10);
-                                if (!isNaN(firstDepartureSeconds) && firstDepartureSeconds > 0) {
-                                    // Create arrival time by adding seconds to current time
-                                    const firstEtaTime = new Date(now);
-                                    firstEtaTime.setSeconds(firstEtaTime.getSeconds() + firstDepartureSeconds);
+                            // Begin collecting valid buses (we may find multiple)
+                            const validBuses = [];
+                            
+                            // Process all buses to create a comprehensive list
+                            for (let i = 0; i < sortedBuses.length; i++) {
+                                const bus = sortedBuses[i];
+                                const arrivalSeconds = parseInt(bus.arrivalTimeInSecond, 10);
+                                const departureSeconds = parseInt(bus.departureTimeInSecond, 10);
+                                
+                                // Use arrivalTimeInSecond if it's valid, otherwise use departureTimeInSecond
+                                const timeSeconds = (!isNaN(arrivalSeconds) && arrivalSeconds < 108000) 
+                                    ? arrivalSeconds 
+                                    : departureSeconds;
+                                
+                                if (!isNaN(timeSeconds) && timeSeconds > 0) {
+                                    const etaTime = new Date(now);
+                                    etaTime.setSeconds(etaTime.getSeconds() + timeSeconds);
                                     
-                                    // Second bus if available
-                                    let secondEtaTime = null;
-                                    let hasSecondBus = false;
-                                    
-                                    if (sortedBuses.length > 1) {
-                                        const secondDepartureSeconds = parseInt(sortedBuses[1].departureTimeInSecond, 10);
-                                        if (!isNaN(secondDepartureSeconds) && secondDepartureSeconds > 0) {
-                                            secondEtaTime = new Date(now);
-                                            secondEtaTime.setSeconds(secondEtaTime.getSeconds() + secondDepartureSeconds);
-                                            hasSecondBus = true;
-                                        }
-                                    }
-                                    
-                                    // Debug info (show both seconds and rounded-up minutes)
-                                    console.log(`K73 first bus in ${firstDepartureSeconds}s = ${Math.ceil(firstDepartureSeconds/60)} min`);
-                                    if (hasSecondBus) {
-                                        const secondDepartureSeconds = parseInt(sortedBuses[1].departureTimeInSecond, 10);
-                                        console.log(`K73 second bus in ${secondDepartureSeconds}s = ${Math.ceil(secondDepartureSeconds/60)} min`);
-                                    }
-                                    
-                                    // Update K73 row (row index 2)
-                                    updateRowData(2, {
-                                        route: 'K73',
-                                        station: '天晴邨晴碧樓',
-                                        firstEtaTime: firstEtaTime,
-                                        secondEtaTime: secondEtaTime,
-                                        hasSecondEta: hasSecondBus,
-                                        type: 'bus'
+                                    validBuses.push({
+                                        eta: etaTime,
+                                        timeSeconds: timeSeconds,
+                                        arrivalText: bus.arrivalTimeText
                                     });
-                                    
-                                    foundK73Data = true;
                                 }
+                            }
+                            
+                            // If we have at least one valid bus
+                            if (validBuses.length > 0) {
+                                // Store up to 3 buses for better continuity
+                                const firstEtaTime = validBuses[0].eta;
+                                const secondEtaTime = validBuses.length > 1 ? validBuses[1].eta : null;
+                                const thirdEtaTime = validBuses.length > 2 ? validBuses[2].eta : null;
+                                
+                                // Debug info
+                                console.log(`K73 found ${validBuses.length} valid buses`);
+                                validBuses.forEach((bus, idx) => {
+                                    console.log(`K73 bus ${idx+1}: ${Math.floor(bus.timeSeconds / 60)}m ${bus.timeSeconds % 60}s (${bus.arrivalText})`);
+                                });
+                                
+                                // Store the valid data with additional buses
+                                lastValidK73Data = {
+                                    route: 'K73',
+                                    station: '天晴邨晴碧樓',
+                                    firstEtaTime: firstEtaTime,
+                                    secondEtaTime: secondEtaTime,
+                                    hasSecondEta: !!secondEtaTime,
+                                    type: 'bus',
+                                    timestamp: now,
+                                    allBuses: validBuses
+                                };
+                                lastK73UpdateTime = now;
+                                
+                                // Store second and third bus data separately for shifting when needed
+                                lastK73SecondBusData = secondEtaTime ? { eta: secondEtaTime } : null;
+                                
+                                // Also store all extra buses for better continuity
+                                if (!window.k73ExtraBuses) window.k73ExtraBuses = [];
+                                // Only replace the buses if we have new ones - prevents corrupting data during transitions
+                                if (secondEtaTime || thirdEtaTime) {
+                                    let extraBuses = [];
+                                    if (secondEtaTime) extraBuses.push(secondEtaTime);
+                                    if (thirdEtaTime) extraBuses.push(thirdEtaTime);
+                                    window.k73ExtraBuses = extraBuses;
+                                }
+                                
+                                // Update K73 row (row index 2)
+                                updateRowData(2, lastValidK73Data);
+                                
+                                foundK73Data = true;
+                                return true;
                             }
                         }
                     }
                 }
                 
+                // If we found the stop but no buses, we can use the data shifting more confidently
                 if (!foundK73Data) {
-                    console.log("No valid K73 data found for K73-U040");
-                    updateRowNoData(2);
+                    console.log(`K73 refresh: stop found=${!!targetStop}, outbound buses found=${foundOutboundBuses}`);
+                    
+                    const now = new Date();
+                    
+                    // We have more confidence in the shift when we know the stop exists but has no buses
+                    const shouldShift = foundOutboundBuses === false && !!targetStop;
+                    
+                    // Only use our stored lastValidK73Data first - it's more accurate than the extra buses during transitions
+                    if (shouldShift && lastValidK73Data && lastValidK73Data.secondEtaTime) {
+                        console.log("Using stored K73 second bus data as primary");
+                        
+                        // Calculate time adjustment
+                        const timeSinceUpdate = now - lastK73UpdateTime;
+                        const adjustedEta = new Date(lastValidK73Data.secondEtaTime.getTime() - timeSinceUpdate);
+                        
+                        // Only use if it's still in the future and not too close (more than 5 seconds away)
+                        if (adjustedEta > now && (adjustedEta - now) > 5000) {
+                            // Create new data structure with second bus as first
+                            const shiftedData = {
+                                route: 'K73',
+                                station: '天晴邨晴碧樓',
+                                firstEtaTime: adjustedEta,
+                                secondEtaTime: window.k73ExtraBuses.length > 0 ? window.k73ExtraBuses[0] : null,
+                                hasSecondEta: window.k73ExtraBuses.length > 0,
+                                type: 'bus'
+                            };
+                            
+                            // Clear second bus from lastValidK73Data to prevent incorrect shifting next time
+                            lastValidK73Data.secondEtaTime = null;
+                            lastValidK73Data.hasSecondEta = false;
+                            
+                            updateRowData(2, shiftedData);
+                            console.log("Successfully shifted using lastValidK73Data second bus");
+                            return true;
+                        }
+                    }
+                    // Fall back to extra buses if we don't have valid second bus data
+                    else if (shouldShift && window.k73ExtraBuses && window.k73ExtraBuses.length > 0) {
+                        console.log("Shifting K73 to use next available bus from extras");
+                        
+                        // Get the next bus from our cache
+                        const nextBus = window.k73ExtraBuses.shift(); // Take the first one and remove it
+                        
+                        if (nextBus) {
+                            // Adjust time based on elapsed time
+                            const timeSinceUpdate = now - lastK73UpdateTime;
+                            const adjustedEta = new Date(nextBus.getTime() - timeSinceUpdate);
+                            
+                            // Only use if it's still in the future and not too close
+                            if (adjustedEta > now && (adjustedEta - now) > 5000) {
+                                const shiftedData = {
+                                    route: 'K73',
+                                    station: '天晴邨晴碧樓',
+                                    firstEtaTime: adjustedEta,
+                                    secondEtaTime: window.k73ExtraBuses.length > 0 ? window.k73ExtraBuses[0] : null,
+                                    hasSecondEta: window.k73ExtraBuses.length > 0,
+                                    type: 'bus'
+                                };
+                                
+                                updateRowData(2, shiftedData);
+                                console.log("Successfully shifted to next K73 bus from extras");
+                                return true;
+                            }
+                        }
+                    }
+                    
+                    // If no data could be found or shifted, display n/a in dark red
+                    if (!foundK73Data) {
+                        updateK73RowNoData();
+                    }
                 }
             } catch (error) {
                 console.error('Error processing K73 data:', error);
-                updateRowNoData(2);
+                updateK73RowNoData();
+                
+                // Try fallback mechanisms
+                // ... existing fallback code ...
             }
         } else {
             console.error('Failed to fetch K73 data, status:', responseK73.status);
-            updateRowNoData(2);
+            updateK73RowNoData();
+            
+            // Try fallback mechanisms
+            // ... existing fallback code ...
         }
         
         // Fetch data for new 969 route (慧景軒) (now row 5)
@@ -600,30 +639,51 @@ async function fetchMultipleBusData() {
         const response269 = await fetch(api269Url);
         if (response269.ok) {
             const data269 = await response269.json();
+            console.log('269M raw data:', data269.data); // Debug log
+            
             if (data269 && data269.data && data269.data.length > 0) {
-                const firstEta = new Date(data269.data[0].eta);
+                // Filter out entries with null eta or "最後班次已過" remark
+                const validEntries = data269.data.filter(entry => 
+                    entry.eta !== null && 
+                    entry.rmk_tc !== "最後班次已過" &&
+                    new Date(entry.eta) > new Date()
+                );
                 
-                // Use second entry if available
-                let secondEta;
-                let hasSecondEta = false;
-                
-                if (data269.data.length > 1) {
-                    secondEta = new Date(data269.data[1].eta);
-                    hasSecondEta = true;
+                if (validEntries.length > 0) {
+                    const firstEta = new Date(validEntries[0].eta);
+                    
+                    // Use second entry if available
+                    let secondEta;
+                    let hasSecondEta = false;
+                    
+                    if (validEntries.length > 1) {
+                        secondEta = new Date(validEntries[1].eta);
+                        hasSecondEta = true;
+                    } else {
+                        // Fallback date (won't be displayed)
+                        secondEta = new Date(firstEta);
+                        secondEta.setMinutes(secondEta.getMinutes() + 30);
+                    }
+                    
+                    // Debug log
+                    console.log('269M times:', {
+                        firstEta: firstEta.toISOString(),
+                        secondEta: secondEta.toISOString(),
+                        now: new Date().toISOString()
+                    });
+                    
+                    updateRowData(6, {
+                        route: '269M',
+                        station: '晴碧樓',
+                        firstEtaTime: firstEta,
+                        secondEtaTime: secondEta,
+                        hasSecondEta: hasSecondEta,
+                        type: 'bus'
+                    });
                 } else {
-                    // Fallback date (won't be displayed)
-                    secondEta = new Date(firstEta);
-                    secondEta.setMinutes(secondEta.getMinutes() + 30);
+                    // No valid entries (all null or "最後班次已過")
+                    updateRowNoData(6);
                 }
-                
-                updateRowData(6, {
-                    route: '269M',
-                    station: '晴碧樓',
-                    firstEtaTime: firstEta,
-                    secondEtaTime: secondEta,
-                    hasSecondEta: hasSecondEta,
-                    type: 'bus'
-                });
             } else {
                 // No data
                 updateRowNoData(6);
@@ -638,29 +698,41 @@ async function fetchMultipleBusData() {
         if (response265.ok) {
             const data265 = await response265.json();
             if (data265 && data265.data && data265.data.length > 0) {
-                const firstEta = new Date(data265.data[0].eta);
+                // Filter out entries with null eta or "最後班次已過" remark
+                const validEntries = data265.data.filter(entry => 
+                    entry.eta !== null && 
+                    entry.rmk_tc !== "最後班次已過" &&
+                    new Date(entry.eta) > new Date()
+                );
                 
-                // Use second entry if available
-                let secondEta;
-                let hasSecondEta = false;
-                
-                if (data265.data.length > 1) {
-                    secondEta = new Date(data265.data[1].eta);
-                    hasSecondEta = true;
+                if (validEntries.length > 0) {
+                    const firstEta = new Date(validEntries[0].eta);
+                    
+                    // Use second entry if available
+                    let secondEta;
+                    let hasSecondEta = false;
+                    
+                    if (validEntries.length > 1) {
+                        secondEta = new Date(validEntries[1].eta);
+                        hasSecondEta = true;
+                    } else {
+                        // Fallback date (won't be displayed)
+                        secondEta = new Date(firstEta);
+                        secondEta.setMinutes(secondEta.getMinutes() + 30);
+                    }
+                    
+                    updateRowData(7, {
+                        route: '265M',
+                        station: '晴彩樓',
+                        firstEtaTime: firstEta,
+                        secondEtaTime: secondEta,
+                        hasSecondEta: hasSecondEta,
+                        type: 'bus'
+                    });
                 } else {
-                    // Fallback date (won't be displayed)
-                    secondEta = new Date(firstEta);
-                    secondEta.setMinutes(secondEta.getMinutes() + 30);
+                    // No valid entries (all null or "最後班次已過")
+                    updateRowNoData(7);
                 }
-                
-                updateRowData(7, {
-                    route: '265M',
-                    station: '晴彩樓',
-                    firstEtaTime: firstEta,
-                    secondEtaTime: secondEta,
-                    hasSecondEta: hasSecondEta,
-                    type: 'bus'
-                });
             } else {
                 // No data
                 updateRowNoData(7);
@@ -675,29 +747,41 @@ async function fetchMultipleBusData() {
         if (response269C.ok) {
             const data269C = await response269C.json();
             if (data269C && data269C.data && data269C.data.length > 0) {
-                const firstEta = new Date(data269C.data[0].eta);
+                // Filter out entries with null eta or "最後班次已過" remark
+                const validEntries = data269C.data.filter(entry => 
+                    entry.eta !== null && 
+                    entry.rmk_tc !== "最後班次已過" &&
+                    new Date(entry.eta) > new Date()
+                );
                 
-                // Use second entry if available
-                let secondEta;
-                let hasSecondEta = false;
-                
-                if (data269C.data.length > 1) {
-                    secondEta = new Date(data269C.data[1].eta);
-                    hasSecondEta = true;
+                if (validEntries.length > 0) {
+                    const firstEta = new Date(validEntries[0].eta);
+                    
+                    // Use second entry if available
+                    let secondEta;
+                    let hasSecondEta = false;
+                    
+                    if (validEntries.length > 1) {
+                        secondEta = new Date(validEntries[1].eta);
+                        hasSecondEta = true;
+                    } else {
+                        // Fallback date (won't be displayed)
+                        secondEta = new Date(firstEta);
+                        secondEta.setMinutes(secondEta.getMinutes() + 30);
+                    }
+                    
+                    updateRowData(8, {
+                        route: '269C',
+                        station: '麗湖居',
+                        firstEtaTime: firstEta,
+                        secondEtaTime: secondEta,
+                        hasSecondEta: hasSecondEta,
+                        type: 'bus'
+                    });
                 } else {
-                    // Fallback date (won't be displayed)
-                    secondEta = new Date(firstEta);
-                    secondEta.setMinutes(secondEta.getMinutes() + 30);
+                    // No valid entries (all null or "最後班次已過")
+                    updateRowNoData(8);
                 }
-                
-                updateRowData(8, {
-                    route: '269C',
-                    station: '麗湖居',
-                    firstEtaTime: firstEta,
-                    secondEtaTime: secondEta,
-                    hasSecondEta: hasSecondEta,
-                    type: 'bus'
-                });
             } else {
                 // No data
                 updateRowNoData(8);
@@ -712,29 +796,41 @@ async function fetchMultipleBusData() {
         if (response276B.ok) {
             const data276B = await response276B.json();
             if (data276B && data276B.data && data276B.data.length > 0) {
-                const firstEta = new Date(data276B.data[0].eta);
+                // Filter out entries with null eta or "最後班次已過" remark
+                const validEntries = data276B.data.filter(entry => 
+                    entry.eta !== null && 
+                    entry.rmk_tc !== "最後班次已過" &&
+                    new Date(entry.eta) > new Date()
+                );
                 
-                // Use second entry if available
-                let secondEta;
-                let hasSecondEta = false;
-                
-                if (data276B.data.length > 1) {
-                    secondEta = new Date(data276B.data[1].eta);
-                    hasSecondEta = true;
+                if (validEntries.length > 0) {
+                    const firstEta = new Date(validEntries[0].eta);
+                    
+                    // Use second entry if available
+                    let secondEta;
+                    let hasSecondEta = false;
+                    
+                    if (validEntries.length > 1) {
+                        secondEta = new Date(validEntries[1].eta);
+                        hasSecondEta = true;
+                    } else {
+                        // Fallback date (won't be displayed)
+                        secondEta = new Date(firstEta);
+                        secondEta.setMinutes(secondEta.getMinutes() + 30);
+                    }
+                    
+                    updateRowData(9, {
+                        route: '276B',
+                        station: '慧景軒',
+                        firstEtaTime: firstEta,
+                        secondEtaTime: secondEta,
+                        hasSecondEta: hasSecondEta,
+                        type: 'bus'
+                    });
                 } else {
-                    // Fallback date (won't be displayed)
-                    secondEta = new Date(firstEta);
-                    secondEta.setMinutes(secondEta.getMinutes() + 30);
+                    // No valid entries (all null or "最後班次已過")
+                    updateRowNoData(9);
                 }
-                
-                updateRowData(9, {
-                    route: '276B',
-                    station: '慧景軒',
-                    firstEtaTime: firstEta,
-                    secondEtaTime: secondEta,
-                    hasSecondEta: hasSecondEta,
-                    type: 'bus'
-                });
             } else {
                 // No data
                 updateRowNoData(9);
@@ -751,17 +847,25 @@ async function fetchMultipleBusData() {
             
             // Filter for "天富" destination
             if (data276B2 && data276B2.data) {
-                const filteredData = data276B2.data.filter(item => item.dest_tc === '天富');
+                // First filter by destination
+                const filteredByDest = data276B2.data.filter(item => item.dest_tc === '天富');
                 
-                if (filteredData.length > 0) {
-                    const firstEta = new Date(filteredData[0].eta);
+                // Then filter out null eta values or "最後班次已過" remark
+                const validEntries = filteredByDest.filter(entry => 
+                    entry.eta !== null && 
+                    entry.rmk_tc !== "最後班次已過" &&
+                    new Date(entry.eta) > new Date()
+                );
+                
+                if (validEntries.length > 0) {
+                    const firstEta = new Date(validEntries[0].eta);
                     
                     // Use second entry if available
                     let secondEta;
                     let hasSecondEta = false;
                     
-                    if (filteredData.length > 1) {
-                        secondEta = new Date(filteredData[1].eta);
+                    if (validEntries.length > 1) {
+                        secondEta = new Date(validEntries[1].eta);
                         hasSecondEta = true;
                     } else {
                         // Fallback date (won't be displayed)
@@ -778,7 +882,7 @@ async function fetchMultipleBusData() {
                         type: 'bus'
                     });
                 } else {
-                    // No "天富" destinations found
+                    // No valid entries after filtering
                     updateRowNoData(10);
                 }
             } else {
@@ -794,29 +898,41 @@ async function fetchMultipleBusData() {
         if (response265B.ok) {
             const data265B = await response265B.json();
             if (data265B && data265B.data && data265B.data.length > 0) {
-                const firstEta = new Date(data265B.data[0].eta);
+                // Filter out entries with null eta or "最後班次已過" remark
+                const validEntries = data265B.data.filter(entry => 
+                    entry.eta !== null && 
+                    entry.rmk_tc !== "最後班次已過" &&
+                    new Date(entry.eta) > new Date()
+                );
                 
-                // Use second entry if available
-                let secondEta;
-                let hasSecondEta = false;
-                
-                if (data265B.data.length > 1) {
-                    secondEta = new Date(data265B.data[1].eta);
-                    hasSecondEta = true;
+                if (validEntries.length > 0) {
+                    const firstEta = new Date(validEntries[0].eta);
+                    
+                    // Use second entry if available
+                    let secondEta;
+                    let hasSecondEta = false;
+                    
+                    if (validEntries.length > 1) {
+                        secondEta = new Date(validEntries[1].eta);
+                        hasSecondEta = true;
+                    } else {
+                        // Fallback date (won't be displayed)
+                        secondEta = new Date(firstEta);
+                        secondEta.setMinutes(secondEta.getMinutes() + 30);
+                    }
+                    
+                    updateRowData(11, {
+                        route: '265B',
+                        station: '晴彩樓',
+                        firstEtaTime: firstEta,
+                        secondEtaTime: secondEta,
+                        hasSecondEta: hasSecondEta,
+                        type: 'bus'
+                    });
                 } else {
-                    // Fallback date (won't be displayed)
-                    secondEta = new Date(firstEta);
-                    secondEta.setMinutes(secondEta.getMinutes() + 30);
+                    // No valid entries (all null or "最後班次已過")
+                    updateRowNoData(11);
                 }
-                
-                updateRowData(11, {
-                    route: '265B',
-                    station: '晴彩樓',
-                    firstEtaTime: firstEta,
-                    secondEtaTime: secondEta,
-                    hasSecondEta: hasSecondEta,
-                    type: 'bus'
-                });
             } else {
                 // No data
                 updateRowNoData(11);
@@ -831,35 +947,47 @@ async function fetchMultipleBusData() {
         if (response69.ok) {
             const data69 = await response69.json();
             if (data69 && data69.data && data69.data.length > 0) {
-                const firstEta = new Date(data69.data[0].eta);
+                // Filter out entries with null eta or "最後班次已過" remark
+                const validEntries = data69.data.filter(entry => 
+                    entry.eta !== null && 
+                    entry.rmk_tc !== "最後班次已過" &&
+                    new Date(entry.eta) > new Date()
+                );
                 
-                // Use second entry if available
-                let secondEta;
-                let hasSecondEta = false;
-                
-                if (data69.data.length > 1) {
-                    secondEta = new Date(data69.data[1].eta);
-                    hasSecondEta = true;
+                if (validEntries.length > 0) {
+                    const firstEta = new Date(validEntries[0].eta);
+                    
+                    // Use second entry if available
+                    let secondEta;
+                    let hasSecondEta = false;
+                    
+                    if (validEntries.length > 1) {
+                        secondEta = new Date(validEntries[1].eta);
+                        hasSecondEta = true;
+                    } else {
+                        // Fallback date (won't be displayed)
+                        secondEta = new Date(firstEta);
+                        secondEta.setMinutes(secondEta.getMinutes() + 30);
+                    }
+                    
+                    updateRowData(12, {
+                        route: '69',
+                        station: '濕地公園路',
+                        firstEtaTime: firstEta,
+                        secondEtaTime: secondEta,
+                        hasSecondEta: hasSecondEta,
+                        type: 'bus'
+                    });
                 } else {
-                    // Fallback date (won't be displayed)
-                    secondEta = new Date(firstEta);
-                    secondEta.setMinutes(secondEta.getMinutes() + 30);
+                    // No valid entries (all null or "最後班次已過")
+                    update69RowNoData();
                 }
-                
-                updateRowData(12, {
-                    route: '69',
-                    station: '濕地公園路',
-                    firstEtaTime: firstEta,
-                    secondEtaTime: secondEta,
-                    hasSecondEta: hasSecondEta,
-                    type: 'bus'
-                });
             } else {
                 // No data
-                updateRowNoData(12);
+                update69RowNoData();
             }
         } else {
-            updateRowNoData(12);
+            update69RowNoData();
         }
         
         // Update last updated time
@@ -871,9 +999,16 @@ async function fetchMultipleBusData() {
     } catch (error) {
         console.error('Error fetching bus data:', error);
         document.getElementById('last-update').textContent = new Date().toLocaleTimeString();
-        // Mark all rows as no data when there's an error
+        
+        // Special handling for K73 and 69 when there is a general error
+        updateK73RowNoData();
+        update69RowNoData();
+        
+        // Mark all other rows as no data when there's an error
         for (let i = 0; i < 13; i++) {
-            updateRowNoData(i);
+            if (i !== 2 && i !== 12) { // Skip K73 and 69 as they're handled above
+                updateRowNoData(i);
+            }
         }
     }
 }
@@ -892,8 +1027,41 @@ function updateRowNoData(rowIndex) {
         minutesElements.forEach(el => {
             el.textContent = 'n/a';
             el.classList.add('na-text'); // Add class for styling
+            el.classList.remove('now-text'); // Remove any "now" styling
+            
+            // Ensure dark red styling for all routes
+            el.style.color = '#cc0000'; // Dark red
+            el.style.fontWeight = 'bold';
         });
         fullTimeElements.forEach(el => el.textContent = '');
+    }
+}
+
+// Special handler for K73 no data case
+function updateK73RowNoData() {
+    const row = document.querySelector('.arrivals-table tbody tr:nth-child(3)'); // K73 is row 3 (index 2)
+    if (row) {
+        const timeCell = row.querySelector('td:nth-child(2)');
+        const nextTimeCell = row.querySelector('td:nth-child(3)');
+        
+        if (timeCell && nextTimeCell) {
+            timeCell.innerHTML = '<span class="minutes na-text" style="color:#cc0000;font-weight:bold;">n/a</span>';
+            nextTimeCell.innerHTML = '<span class="minutes na-text" style="color:#cc0000;font-weight:bold;">n/a</span>';
+        }
+    }
+}
+
+// Special handler for 69 no data case
+function update69RowNoData() {
+    const row = document.querySelector('.arrivals-table tbody tr:nth-child(13)'); // 69 is row 13 (index 12)
+    if (row) {
+        const timeCell = row.querySelector('td:nth-child(2)');
+        const nextTimeCell = row.querySelector('td:nth-child(3)');
+        
+        if (timeCell && nextTimeCell) {
+            timeCell.innerHTML = '<span class="minutes na-text" style="color:#cc0000;font-weight:bold;">n/a</span>';
+            nextTimeCell.innerHTML = '<span class="minutes na-text" style="color:#cc0000;font-weight:bold;">n/a</span>';
+        }
     }
 }
 
@@ -913,21 +1081,27 @@ function updateRowData(rowIndex, data) {
             const diffMs = Math.max(0, data.firstEtaTime - now); // Ensure non-negative value
             const diffSeconds = Math.floor(diffMs / 1000);
             
+            // Add route-specific debug log
+            if (data.route === '269M' || data.route === '269C' || data.route === 'K73') {
+                console.log(`${data.route} time calculation: diffMs=${diffMs}, diffSeconds=${diffSeconds}, now=${now.toISOString()}, firstEta=${data.firstEtaTime.toISOString()}`);
+            }
+            
             // Set the minutes display with appropriate formatting
-            if (diffSeconds < 60) {
-                // Less than 60 seconds - show "now" in green
+            if (diffSeconds < 30) {
+                // Less than 30 seconds - show "now" in green
                 minutesElements[0].textContent = 'now';
                 minutesElements[0].classList.add('now-text');
                 minutesElements[0].classList.remove('na-text');
             } else if (diffSeconds < 120) {
-                // Between 60-119 seconds - show "1 min" in normal color
+                // Between 30-119 seconds - show "1 min" in normal color
                 minutesElements[0].textContent = '1 min';
                 minutesElements[0].classList.remove('now-text');
                 minutesElements[0].classList.remove('na-text');
             } else {
-                // 2 minutes or more - calculate exact minute value and round up
-                const minutesUntil = Math.ceil(diffMs / 60000);
-                minutesElements[0].textContent = `${minutesUntil} mins`;
+                // 2 minutes or more - calculate with proper rounding
+                // Floor division by 60 then add 1 to ensure we correctly show "2 min" 
+                const minutesUntil = Math.floor(diffSeconds / 60) + (diffSeconds % 60 > 0 ? 1 : 0);
+                minutesElements[0].textContent = `${minutesUntil} ${minutesUntil === 1 ? 'min' : 'mins'}`;
                 minutesElements[0].classList.remove('now-text');
                 minutesElements[0].classList.remove('na-text');
             }
@@ -942,6 +1116,8 @@ function updateRowData(rowIndex, data) {
             minutesElements[0].textContent = 'n/a';
             minutesElements[0].classList.remove('now-text');
             minutesElements[0].classList.add('na-text');
+            minutesElements[0].style.color = '#cc0000'; // Dark red
+            minutesElements[0].style.fontWeight = 'bold';
             fullTimeElements[0].textContent = '';
         }
         
@@ -952,20 +1128,21 @@ function updateRowData(rowIndex, data) {
             const diffSeconds = Math.floor(diffMs / 1000);
             
             // Set the minutes display with appropriate formatting
-            if (diffSeconds < 60) {
-                // Less than 60 seconds - show "now" in green
+            if (diffSeconds < 30) {
+                // Less than 30 seconds - show "now" in green
                 minutesElements[1].textContent = 'now';
                 minutesElements[1].classList.add('now-text');
                 minutesElements[1].classList.remove('na-text');
             } else if (diffSeconds < 120) {
-                // Between 60-119 seconds - show "1 min" in normal color
+                // Between 30-119 seconds - show "1 min" in normal color
                 minutesElements[1].textContent = '1 min';
                 minutesElements[1].classList.remove('now-text');
                 minutesElements[1].classList.remove('na-text');
             } else {
-                // 2 minutes or more - calculate exact minute value and round up
-                const minutesUntil = Math.ceil(diffMs / 60000);
-                minutesElements[1].textContent = `${minutesUntil} mins`;
+                // 2 minutes or more - calculate with proper rounding
+                // Floor division by 60 then add 1 to ensure we correctly show "2 min"
+                const minutesUntil = Math.floor(diffSeconds / 60) + (diffSeconds % 60 > 0 ? 1 : 0);
+                minutesElements[1].textContent = `${minutesUntil} ${minutesUntil === 1 ? 'min' : 'mins'}`;
                 minutesElements[1].classList.remove('now-text');
                 minutesElements[1].classList.remove('na-text');
             }
@@ -980,17 +1157,20 @@ function updateRowData(rowIndex, data) {
             minutesElements[1].textContent = 'n/a';
             minutesElements[1].classList.remove('now-text');
             minutesElements[1].classList.add('na-text');
+            minutesElements[1].style.color = '#cc0000'; // Dark red
+            minutesElements[1].style.fontWeight = 'bold';
             fullTimeElements[1].textContent = '';
         }
     }
 }
 
 // Function to update LRT rows that have a different time format
-function updateLrtRowData(rowIndex, data) {
-    const tbody = document.querySelector('.arrivals-table tbody');
-    const row = tbody.children[rowIndex];
-    
-    if (row) {
+function updateLrtRow(rowIndex, data) {
+    const rows = document.querySelector('.arrivals-table').querySelectorAll('tr');
+    if (rowIndex < rows.length) {
+        const row = rows[rowIndex];
+        
+        // Get cells for updating
         const routeCell = row.querySelector('td.route-cell');
         const timeCell = row.querySelector('td:nth-child(2)');
         const nextTimeCell = row.querySelector('td:nth-child(3)');
@@ -1012,119 +1192,55 @@ function updateLrtRowData(rowIndex, data) {
             const minutesSpan = document.createElement('span');
             minutesSpan.className = 'minutes';
             
-            // Add debug info
-            console.log(`${data.route} 1st LRT arrival: time=${data.firstTimeStr}`);
-            
-            if (data.firstTimeStr && data.firstTimeStr !== '--') {
-                // Handle different time string formats
-                if (data.firstTimeStr === '-' || data.firstTimeStr === 'Arriving') {
-                    // Less than 60 seconds - show "now"
+            // Process the first arrival time
+            if (data.firstTime && data.firstTime !== '--' && data.firstTime !== 'n/a') {
+                // Handle "-" or "Arriving" as "now"
+                if (data.firstTime === '-' || data.firstTime === 'Arriving') {
                     minutesSpan.textContent = 'now';
                     minutesSpan.classList.add('now-text');
-                } else if (data.firstTimeStr.includes('min')) {
-                    // Parse minutes value
-                    const minText = data.firstTimeStr.split(' ')[0];
-                    const minValue = parseInt(minText);
-                    
-                    if (!isNaN(minValue)) {
-                        if (minValue === 1) {
-                            // Exactly "1 min"
-                            minutesSpan.textContent = '1 min';
-                            minutesSpan.classList.remove('now-text');
-                        } else {
-                            // 2+ minutes
-                            minutesSpan.textContent = `${minValue} mins`;
-                            minutesSpan.classList.remove('now-text');
-                        }
-                    } else {
-                        // Fallback if parsing fails
-                        minutesSpan.textContent = data.firstTimeStr;
-                        minutesSpan.classList.remove('now-text');
-                    }
                 } else {
-                    // Any other text
-                    minutesSpan.textContent = data.firstTimeStr;
+                    // Keep original time string (e.g., "3 min")
+                    minutesSpan.textContent = data.firstTime;
                     minutesSpan.classList.remove('now-text');
                 }
+                minutesSpan.classList.remove('na-text');
             } else {
                 minutesSpan.textContent = 'n/a';
                 minutesSpan.classList.add('na-text');
+                minutesSpan.classList.remove('now-text');
+                minutesSpan.style.color = '#cc0000'; // Dark red
+                minutesSpan.style.fontWeight = 'bold';
             }
             
             timeCell.appendChild(minutesSpan);
-            
-            // Only show full time if we have a valid date object
-            if (data.firstEtaTime) {
-                const fullTimeSpan = document.createElement('span');
-                fullTimeSpan.className = 'full-time';
-                fullTimeSpan.textContent = data.firstEtaTime.toLocaleTimeString([], { 
-                    hour: '2-digit', 
-                    minute: '2-digit', 
-                    second: '2-digit', 
-                    hour12: false 
-                });
-                timeCell.appendChild(fullTimeSpan);
-            }
             
             // Second arrival time
             const nextMinutesSpan = document.createElement('span');
             nextMinutesSpan.className = 'minutes';
             
-            // Add debug info
-            console.log(`${data.route} 2nd LRT arrival: time=${data.secondTimeStr}`);
-            
-            if (data.secondTimeStr && data.secondTimeStr !== '--') {
-                // Handle different time string formats
-                if (data.secondTimeStr === '-' || data.secondTimeStr === 'Arriving') {
-                    // Less than 60 seconds - show "now"
+            // Process the second arrival time
+            if (data.secondTime && data.secondTime !== '--' && data.secondTime !== 'n/a') {
+                // Handle "-" or "Arriving" as "now"
+                if (data.secondTime === '-' || data.secondTime === 'Arriving') {
                     nextMinutesSpan.textContent = 'now';
                     nextMinutesSpan.classList.add('now-text');
-                } else if (data.secondTimeStr.includes('min')) {
-                    // Parse minutes value
-                    const minText = data.secondTimeStr.split(' ')[0];
-                    const minValue = parseInt(minText);
-                    
-                    if (!isNaN(minValue)) {
-                        if (minValue === 1) {
-                            // Exactly "1 min"
-                            nextMinutesSpan.textContent = '1 min';
-                            nextMinutesSpan.classList.remove('now-text');
-                        } else {
-                            // 2+ minutes
-                            nextMinutesSpan.textContent = `${minValue} mins`;
-                            nextMinutesSpan.classList.remove('now-text');
-                        }
-                    } else {
-                        // Fallback if parsing fails
-                        nextMinutesSpan.textContent = data.secondTimeStr;
-                        nextMinutesSpan.classList.remove('now-text');
-                    }
                 } else {
-                    // Any other text
-                    nextMinutesSpan.textContent = data.secondTimeStr;
+                    // Keep original time string (e.g., "8 min")
+                    nextMinutesSpan.textContent = data.secondTime;
                     nextMinutesSpan.classList.remove('now-text');
                 }
+                nextMinutesSpan.classList.remove('na-text');
             } else {
                 nextMinutesSpan.textContent = 'n/a';
                 nextMinutesSpan.classList.add('na-text');
+                nextMinutesSpan.classList.remove('now-text');
+                nextMinutesSpan.style.color = '#cc0000'; // Dark red
+                nextMinutesSpan.style.fontWeight = 'bold';
             }
             
             nextTimeCell.appendChild(nextMinutesSpan);
             
-            // Only show full time if we have a valid date object
-            if (data.secondEtaTime) {
-                const nextFullTimeSpan = document.createElement('span');
-                nextFullTimeSpan.className = 'full-time';
-                nextFullTimeSpan.textContent = data.secondEtaTime.toLocaleTimeString([], { 
-                    hour: '2-digit', 
-                    minute: '2-digit', 
-                    second: '2-digit', 
-                    hour12: false 
-                });
-                nextTimeCell.appendChild(nextFullTimeSpan);
-            }
-            
-            nextTimeCell.classList.add('next-arrival');
+            // No full time elements for LRT (as requested)
         }
     }
 }
@@ -1140,7 +1256,7 @@ setInterval(() => {
     fetchBusData();
     fetchMultipleBusData();
     console.log('All data refreshed');
-}, 10000); // Refresh every 10 seconds to ensure accurate countdown tracking for "now" and "1 min" states
+}, 5000); // Refresh every 5 seconds to reduce lag, especially for K73 route data
 
 // Add refresh button functionality if needed
 document.addEventListener('keydown', function(event) {
@@ -1195,17 +1311,220 @@ function updateFirstRow(data) {
                 stationName.textContent = data.station;
             }
             
-            // Update first arrival time
-            updateTimeCell(timeCell, data.firstEtaTime);
+            // Update first arrival time using the same improved threshold as updateRowData
+            updateTimeCell(timeCell, data.firstEtaTime, 30); // Pass 30-second threshold for "now"
             
             // Update second arrival time or show n/a
             if (data.hasSecondEta) {
-                updateTimeCell(nextTimeCell, data.secondEtaTime);
+                updateTimeCell(nextTimeCell, data.secondEtaTime, 30); // Pass 30-second threshold for "now"
             } else {
-                nextTimeCell.innerHTML = '<span class="minutes">n/a</span>';
+                nextTimeCell.innerHTML = '<span class="minutes na-text" style="color:#cc0000;font-weight:bold;">n/a</span>';
             }
             
             nextTimeCell.classList.add('next-arrival');
         }
+    }
+}
+
+// Update the K73 data handling to be smoother
+async function fetchK73Data() {
+    const apiK73Url = 'https://rt.data.gov.hk/v1/transport/mtr/bus/getSchedule';
+    const responseK73 = await fetch(apiK73Url, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            language: 'zh',
+            routeName: 'K73'
+        })
+    });
+
+    if (responseK73.ok) {
+        const dataK73 = await responseK73.json();
+        console.log("K73 data refreshed:", new Date().toISOString());
+        
+        let foundK73Data = false;
+        let foundOutboundBuses = false;
+        
+        if (dataK73 && dataK73.busStop && Array.isArray(dataK73.busStop)) {
+            const TARGET_STOP_ID = 'K73-U040';
+            let targetStop = dataK73.busStop.find(stop => stop.busStopId === TARGET_STOP_ID);
+            
+            if (targetStop && targetStop.bus && Array.isArray(targetStop.bus)) {
+                // Filter for buses in the outbound direction (YLW = Yuen Long West)
+                const outboundBuses = targetStop.bus.filter(bus => 
+                    bus.lineRef && (bus.lineRef.includes('YLW') || bus.direction === 'O')
+                );
+                
+                foundOutboundBuses = outboundBuses.length > 0;
+                
+                if (foundOutboundBuses) {
+                    // Sort by arrival time (not departure time)
+                    const sortedBuses = [...outboundBuses].sort((a, b) => {
+                        // Use arrivalTimeInSecond instead of departureTimeInSecond to match official app
+                        const timeA = parseInt(a.arrivalTimeInSecond, 10) || parseInt(a.departureTimeInSecond, 10) || 999999;
+                        const timeB = parseInt(b.arrivalTimeInSecond, 10) || parseInt(b.departureTimeInSecond, 10) || 999999;
+                        return timeA - timeB;
+                    });
+                    
+                    // Current time reference
+                    const now = new Date();
+                    
+                    // Begin collecting valid buses (we may find multiple)
+                    const validBuses = [];
+                    
+                    // Process all buses to create a comprehensive list
+                    for (let i = 0; i < sortedBuses.length; i++) {
+                        const bus = sortedBuses[i];
+                        const arrivalSeconds = parseInt(bus.arrivalTimeInSecond, 10);
+                        const departureSeconds = parseInt(bus.departureTimeInSecond, 10);
+                        
+                        // Use arrivalTimeInSecond if it's valid, otherwise use departureTimeInSecond
+                        const timeSeconds = (!isNaN(arrivalSeconds) && arrivalSeconds < 108000) 
+                            ? arrivalSeconds 
+                            : departureSeconds;
+                        
+                        if (!isNaN(timeSeconds) && timeSeconds > 0) {
+                            const etaTime = new Date(now);
+                            etaTime.setSeconds(etaTime.getSeconds() + timeSeconds);
+                            
+                            validBuses.push({
+                                eta: etaTime,
+                                timeSeconds: timeSeconds,
+                                arrivalText: bus.arrivalTimeText
+                            });
+                        }
+                    }
+                    
+                    // If we have at least one valid bus
+                    if (validBuses.length > 0) {
+                        // Store up to 3 buses for better continuity
+                        const firstEtaTime = validBuses[0].eta;
+                        const secondEtaTime = validBuses.length > 1 ? validBuses[1].eta : null;
+                        const thirdEtaTime = validBuses.length > 2 ? validBuses[2].eta : null;
+                        
+                        // Debug info
+                        console.log(`K73 found ${validBuses.length} valid buses`);
+                        validBuses.forEach((bus, idx) => {
+                            console.log(`K73 bus ${idx+1}: ${Math.floor(bus.timeSeconds / 60)}m ${bus.timeSeconds % 60}s (${bus.arrivalText})`);
+                        });
+                        
+                        // Store the valid data with additional buses
+                        lastValidK73Data = {
+                            route: 'K73',
+                            station: '天晴邨晴碧樓',
+                            firstEtaTime: firstEtaTime,
+                            secondEtaTime: secondEtaTime,
+                            hasSecondEta: !!secondEtaTime,
+                            type: 'bus',
+                            timestamp: now,
+                            allBuses: validBuses
+                        };
+                        lastK73UpdateTime = now;
+                        
+                        // Store second and third bus data separately for shifting when needed
+                        lastK73SecondBusData = secondEtaTime ? { eta: secondEtaTime } : null;
+                        
+                        // Also store all extra buses for better continuity
+                        if (!window.k73ExtraBuses) window.k73ExtraBuses = [];
+                        // Only replace the buses if we have new ones - prevents corrupting data during transitions
+                        if (secondEtaTime || thirdEtaTime) {
+                            let extraBuses = [];
+                            if (secondEtaTime) extraBuses.push(secondEtaTime);
+                            if (thirdEtaTime) extraBuses.push(thirdEtaTime);
+                            window.k73ExtraBuses = extraBuses;
+                        }
+                        
+                        // Update K73 row (row index 2)
+                        updateRowData(2, lastValidK73Data);
+                        
+                        foundK73Data = true;
+                        return true;
+                    }
+                }
+            }
+        }
+        
+        // If we found the stop but no buses, we can use the data shifting more confidently
+        if (!foundK73Data) {
+            console.log(`K73 refresh: stop found=${!!targetStop}, outbound buses found=${foundOutboundBuses}`);
+            
+            const now = new Date();
+            
+            // We have more confidence in the shift when we know the stop exists but has no buses
+            const shouldShift = foundOutboundBuses === false && !!targetStop;
+            
+            // Only use our stored lastValidK73Data first - it's more accurate than the extra buses during transitions
+            if (shouldShift && lastValidK73Data && lastValidK73Data.secondEtaTime) {
+                console.log("Using stored K73 second bus data as primary");
+                
+                // Calculate time adjustment
+                const timeSinceUpdate = now - lastK73UpdateTime;
+                const adjustedEta = new Date(lastValidK73Data.secondEtaTime.getTime() - timeSinceUpdate);
+                
+                // Only use if it's still in the future and not too close (more than 5 seconds away)
+                if (adjustedEta > now && (adjustedEta - now) > 5000) {
+                    // Create new data structure with second bus as first
+                    const shiftedData = {
+                        route: 'K73',
+                        station: '天晴邨晴碧樓',
+                        firstEtaTime: adjustedEta,
+                        secondEtaTime: window.k73ExtraBuses.length > 0 ? window.k73ExtraBuses[0] : null,
+                        hasSecondEta: window.k73ExtraBuses.length > 0,
+                        type: 'bus'
+                    };
+                    
+                    // Clear second bus from lastValidK73Data to prevent incorrect shifting next time
+                    lastValidK73Data.secondEtaTime = null;
+                    lastValidK73Data.hasSecondEta = false;
+                    
+                    updateRowData(2, shiftedData);
+                    console.log("Successfully shifted using lastValidK73Data second bus");
+                    return true;
+                }
+            }
+            // Fall back to extra buses if we don't have valid second bus data
+            else if (shouldShift && window.k73ExtraBuses && window.k73ExtraBuses.length > 0) {
+                console.log("Shifting K73 to use next available bus from extras");
+                
+                // Get the next bus from our cache
+                const nextBus = window.k73ExtraBuses.shift(); // Take the first one and remove it
+                
+                if (nextBus) {
+                    // Adjust time based on elapsed time
+                    const timeSinceUpdate = now - lastK73UpdateTime;
+                    const adjustedEta = new Date(nextBus.getTime() - timeSinceUpdate);
+                    
+                    // Only use if it's still in the future and not too close
+                    if (adjustedEta > now && (adjustedEta - now) > 5000) {
+                        const shiftedData = {
+                            route: 'K73',
+                            station: '天晴邨晴碧樓',
+                            firstEtaTime: adjustedEta,
+                            secondEtaTime: window.k73ExtraBuses.length > 0 ? window.k73ExtraBuses[0] : null,
+                            hasSecondEta: window.k73ExtraBuses.length > 0,
+                            type: 'bus'
+                        };
+                        
+                        updateRowData(2, shiftedData);
+                        console.log("Successfully shifted to next K73 bus from extras");
+                        return true;
+                    }
+                }
+            }
+            
+            // If no data could be found or shifted, display n/a in dark red
+            if (!foundK73Data) {
+                updateK73RowNoData();
+            }
+        }
+        
+        return foundK73Data;
+    } else {
+        console.error('Emergency K73 refresh - Failed to fetch data, status:', responseK73.status);
+        // In case of network error, display n/a in dark red
+        updateK73RowNoData();
+        return false;
     }
 } 

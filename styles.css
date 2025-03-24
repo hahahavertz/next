@@ -187,3 +187,10 @@ tr:nth-child(13) .route-number {
 .na-text {
     color: #cc0000;
 }
+
+/* Special styling for K73 and 69 n/a text */
+tr:nth-child(3) .na-text,  /* K73 (row 3) */
+tr:nth-child(13) .na-text  /* 69 (row 13) */ {
+    color: #cc0000;
+    font-weight: bold;
+}
