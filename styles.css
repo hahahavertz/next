@@ -62,22 +62,35 @@ body {
     border: 1px solid #dd0000;
 }
 
-/* Yellow boxes for 967, 969, 969 (rows 1-3) */
-tr:nth-child(1) .route-number,
-tr:nth-child(2) .route-number,
-tr:nth-child(3) .route-number {
+/* Yellow boxes for 967, 969, 969 (rows 4-6) */
+tr:nth-child(4) .route-number,
+tr:nth-child(5) .route-number,
+tr:nth-child(6) .route-number {
     background-color: #ffcc00;
     border: 1px solid #e6b800;
 }
 
-/* Blue boxes for 705, 706 (rows 10-11) */
-tr:nth-child(10) .route-number,
-tr:nth-child(11) .route-number {
+/* Blue boxes for 705, 706 (rows 1-2) */
+tr:nth-child(1) .route-number,
+tr:nth-child(2) .route-number {
     background-color: #0088ff;
     border: 1px solid #0077dd;
 }
 
+/* Purple box for K73 (row 3) */
+tr:nth-child(3) .route-number {
+    background-color: #9933cc;
+    border: 1px solid #7722aa;
+}
+
+/* Red box for 69 (row 13) */
+tr:nth-child(13) .route-number {
+    background-color: #ff3333;
+    border: 1px solid #dd0000;
+}
+
 /* Red boxes are handled by the default .route-number style */
+/* This includes rows 7-12 (269M, 265M, 269C, 276B, 276B, 265B) */
 
 .station-name {
     font-size: 0.85rem;
@@ -144,4 +157,33 @@ tr:nth-child(11) .route-number {
     .minutes {
         font-size: 1.1rem;
     }
+}
+
+/* Style for "now" text */
+.minutes:contains('now') {
+    color: #00ff00;
+}
+
+/* Add a more specific selector to ensure it works */
+.minutes {
+    color: inherit;
+}
+
+.minutes:has-text('now') {
+    color: #00ff00;
+}
+
+/* Style for "now" text */
+.now-text {
+    color: #00ff00;
+}
+
+/* Style for "n/a" text - displayed in dark red */
+.minutes:not(.now-text):contains("n/a") {
+    color: #cc0000;
+}
+
+/* Style for "n/a" text - displayed in dark red */
+.na-text {
+    color: #cc0000;
 }
