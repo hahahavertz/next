@@ -622,10 +622,14 @@ function updateLrtRow(rowIndex, data) {
             
             // Process the first arrival time
             if (data.firstTime && data.firstTime !== '--' && data.firstTime !== 'n/a') {
-                // Handle "-" or "Arriving" as "now"
-                if (data.firstTime === '-' || data.firstTime === 'Arriving') {
+                // Handle "-" as "now" in green
+                if (data.firstTime === '-') {
                     minutesSpan.textContent = 'now';
                     minutesSpan.classList.add('now-text');
+                } else if (data.firstTime === 'Arriving') {
+                    // Show "1 min" for "Arriving"
+                    minutesSpan.textContent = '1 min';
+                    minutesSpan.classList.remove('now-text');
                 } else {
                     // Keep original time string (e.g., "3 min")
                     minutesSpan.textContent = data.firstTime;
@@ -645,10 +649,14 @@ function updateLrtRow(rowIndex, data) {
             
             // Process the second arrival time
             if (data.secondTime && data.secondTime !== '--' && data.secondTime !== 'n/a') {
-                // Handle "-" or "Arriving" as "now"
-                if (data.secondTime === '-' || data.secondTime === 'Arriving') {
+                // Handle "-" as "now" in green
+                if (data.secondTime === '-') {
                     nextMinutesSpan.textContent = 'now';
                     nextMinutesSpan.classList.add('now-text');
+                } else if (data.secondTime === 'Arriving') {
+                    // Show "1 min" for "Arriving"
+                    nextMinutesSpan.textContent = '1 min';
+                    nextMinutesSpan.classList.remove('now-text');
                 } else {
                     // Keep original time string (e.g., "8 min")
                     nextMinutesSpan.textContent = data.secondTime;
