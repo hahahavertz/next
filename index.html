@@ -7,10 +7,56 @@
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <div class="container">
+    <div class="container show-west">
+        <div class="view-switch" aria-label="Transit list selector">
+            <button class="view-tab active" type="button" data-view="west" aria-pressed="true">西/輕鐵</button>
+            <button class="view-tab" type="button" data-view="bus" aria-pressed="false">巴士</button>
+        </div>
         <div class="table-container">
             <table class="arrivals-table">
                 <tbody>
+                    <tr>
+                        <td class="route-cell">
+                            <div class="route-number mtr-line tis-station">TML</div>
+                            <div class="station-name">天水圍 → 屯門</div>
+                        </td>
+                        <td class="time">
+                            <span class="minutes">...</span>
+                            <span class="full-time"></span>
+                        </td>
+                        <td class="time next-arrival">
+                            <span class="minutes">...</span>
+                            <span class="full-time"></span>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="route-cell">
+                            <div class="route-number mtr-line tis-station">TML</div>
+                            <div class="station-name">天水圍 → 烏溪沙</div>
+                        </td>
+                        <td class="time">
+                            <span class="minutes">...</span>
+                            <span class="full-time"></span>
+                        </td>
+                        <td class="time next-arrival">
+                            <span class="minutes">...</span>
+                            <span class="full-time"></span>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="route-cell">
+                            <div class="route-number mtr-line tum-station">TML</div>
+                            <div class="station-name">屯門 → 烏溪沙</div>
+                        </td>
+                        <td class="time">
+                            <span class="minutes">...</span>
+                            <span class="full-time"></span>
+                        </td>
+                        <td class="time next-arrival">
+                            <span class="minutes">...</span>
+                            <span class="full-time"></span>
+                        </td>
+                    </tr>
                     <tr>
                         <td class="route-cell">
                             <div class="route-number">705</div>
@@ -41,8 +87,36 @@
                     </tr>
                     <tr>
                         <td class="route-cell">
+                            <div class="route-number">761P</div>
+                            <div class="station-name">大棠路</div>
+                        </td>
+                        <td class="time">
+                            <span class="minutes">...</span>
+                            <span class="full-time"></span>
+                        </td>
+                        <td class="time next-arrival">
+                            <span class="minutes">...</span>
+                            <span class="full-time"></span>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="route-cell">
                             <div class="route-number">K73</div>
                             <div class="station-name">晴碧樓</div>
+                        </td>
+                        <td class="time">
+                            <span class="minutes">...</span>
+                            <span class="full-time"></span>
+                        </td>
+                        <td class="time next-arrival">
+                            <span class="minutes">...</span>
+                            <span class="full-time"></span>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="route-cell">
+                            <div class="route-number">K66</div>
+                            <div class="station-name">教育路 (入大棠)</div>
                         </td>
                         <td class="time">
                             <span class="minutes">...</span>
@@ -98,7 +172,21 @@
                     <tr>
                         <td class="route-cell">
                             <div class="route-number">269M</div>
-                            <div class="station-name">晴碧樓</div>
+                            <div class="station-name">慧景軒</div>
+                        </td>
+                        <td class="time">
+                            <span class="minutes">...</span>
+                            <span class="full-time"></span>
+                        </td>
+                        <td class="time next-arrival">
+                            <span class="minutes">...</span>
+                            <span class="full-time"></span>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="route-cell">
+                            <div class="route-number">269M</div>
+                            <div class="station-name">耀榮里</div>
                         </td>
                         <td class="time">
                             <span class="minutes">...</span>
@@ -113,6 +201,20 @@
                         <td class="route-cell">
                             <div class="route-number">265M</div>
                             <div class="station-name">晴彩樓</div>
+                        </td>
+                        <td class="time">
+                            <span class="minutes">...</span>
+                            <span class="full-time"></span>
+                        </td>
+                        <td class="time next-arrival">
+                            <span class="minutes">...</span>
+                            <span class="full-time"></span>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="route-cell">
+                            <div class="route-number">265M</div>
+                            <div class="station-name">耀榮里</div>
                         </td>
                         <td class="time">
                             <span class="minutes">...</span>
@@ -183,6 +285,20 @@
                         <td class="route-cell">
                             <div class="route-number">69</div>
                             <div class="station-name">濕地公園路</div>
+                        </td>
+                        <td class="time">
+                            <span class="minutes">...</span>
+                            <span class="full-time"></span>
+                        </td>
+                        <td class="time next-arrival">
+                            <span class="minutes">...</span>
+                            <span class="full-time"></span>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="route-cell">
+                            <div class="route-number">69</div>
+                            <div class="station-name">大棠路</div>
                         </td>
                         <td class="time">
                             <span class="minutes">...</span>
