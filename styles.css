@@ -19,9 +19,41 @@ body {
     box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
 }
 
+.view-switch {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+    margin-bottom: 12px;
+    padding: 4px;
+    background-color: #edf1f5;
+    border-radius: 8px;
+}
+
+.view-tab {
+    border: 0;
+    border-radius: 6px;
+    padding: 8px 10px;
+    background-color: transparent;
+    color: #667;
+    font-size: 0.9rem;
+    font-weight: bold;
+}
+
+.view-tab.active {
+    background-color: white;
+    color: #222;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.14);
+}
+
+.container.show-west .bus-list,
+.container.show-bus .west-list {
+    display: none;
+}
+
 .table-container {
     margin-bottom: 10px;
     overflow-x: auto;
+    touch-action: pan-y;
 }
 
 .arrivals-table {
@@ -62,29 +94,41 @@ body {
     border: 1px solid #dd0000;
 }
 
-/* Yellow boxes for 967, 969, 969 (rows 4-6) */
-tr:nth-child(4) .route-number,
-tr:nth-child(5) .route-number,
-tr:nth-child(6) .route-number {
+/* Yellow boxes for 967, 969, 969 */
+tr:nth-child(9) .route-number,
+tr:nth-child(10) .route-number,
+tr:nth-child(11) .route-number {
     background-color: #ffcc00;
     border: 1px solid #e6b800;
 }
 
-/* Blue boxes for 705, 706 (rows 1-2) */
-tr:nth-child(1) .route-number,
-tr:nth-child(2) .route-number {
+/* Blue boxes for 705, 706, 761P */
+tr:nth-child(4) .route-number,
+tr:nth-child(5) .route-number,
+tr:nth-child(6) .route-number {
     background-color: #0088ff;
     border: 1px solid #0077dd;
 }
 
-/* Purple box for K73 (row 3) */
-tr:nth-child(3) .route-number {
+/* Purple boxes for K73 and K66 */
+tr:nth-child(7) .route-number,
+tr:nth-child(8) .route-number {
     background-color: #9933cc;
     border: 1px solid #7722aa;
 }
 
-/* Red box for 69 (row 13) */
-tr:nth-child(13) .route-number {
+.route-number.mtr-line {
+    background-color: #9a5a2c;
+    border: 2px solid #f2c48e;
+}
+
+.route-number.mtr-line.tum-station {
+    border-color: #1d8cff;
+}
+
+/* Red boxes for 69 */
+tr:nth-child(20) .route-number,
+tr:nth-child(21) .route-number {
     background-color: #ff3333;
     border: 1px solid #dd0000;
 }
@@ -189,8 +233,9 @@ tr:nth-child(13) .route-number {
 }
 
 /* Special styling for K73 and 69 n/a text */
-tr:nth-child(3) .na-text,  /* K73 (row 3) */
-tr:nth-child(13) .na-text  /* 69 (row 13) */ {
+tr:nth-child(7) .na-text,  /* K73 */
+tr:nth-child(20) .na-text, /* 69 */
+tr:nth-child(21) .na-text  /* 69 */ {
     color: #cc0000;
     font-weight: bold;
 }

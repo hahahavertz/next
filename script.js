@@ -219,14 +219,14 @@ async function fetchMultipleBusData() {
                 }
                 
                 // Update rows with the data we found
-                updateLrtRow(0, {
+                updateLrtRow(3, {
                     route: '705',
                     station: '天秀',
                     firstTime: route705Data.firstTime,
                     secondTime: route705Data.secondTime
                 });
                 
-                updateLrtRow(1, {
+                updateLrtRow(4, {
                     route: '706',
                     station: '天秀',
                     firstTime: route706Data.firstTime,
@@ -234,13 +234,48 @@ async function fetchMultipleBusData() {
                 });
             } else {
                 // No platform list available
-                updateRowNoData(0); // For route 705
-                updateRowNoData(1); // For route 706
+                updateRowNoData(3); // For route 705
+                updateRowNoData(4); // For route 706
             }
         } else {
             // API error
-            updateRowNoData(0); // For route 705
-            updateRowNoData(1); // For route 706
+            updateRowNoData(3); // For route 705
+            updateRowNoData(4); // For route 706
+        }
+
+        const apiLrtTaiTongUrl = 'https://rt.data.gov.hk/v1/transport/mtr/lrt/getSchedule?station_id=590';
+        const responseLrtTaiTong = await fetch(apiLrtTaiTongUrl);
+        if (responseLrtTaiTong.ok) {
+            const dataLrtTaiTong = await responseLrtTaiTong.json();
+            let route761PData = { found: false, firstTime: 'n/a', secondTime: 'n/a' };
+            
+            if (dataLrtTaiTong && dataLrtTaiTong.platform_list) {
+                for (const platform of dataLrtTaiTong.platform_list) {
+                    if (platform.route_list) {
+                        const route761PEntries = platform.route_list.filter(train =>
+                            train.route_no === "761P" && train.dest_ch === "天逸"
+                        );
+                        
+                        if (route761PEntries.length > 0) {
+                            route761PData.found = true;
+                            route761PData.firstTime = route761PEntries[0].time_en;
+                            
+                            if (route761PEntries.length > 1) {
+                                route761PData.secondTime = route761PEntries[1].time_en;
+                            }
+                        }
+                    }
+                }
+            }
+            
+            updateLrtRow(5, {
+                route: '761P',
+                station: '大棠路',
+                firstTime: route761PData.firstTime,
+                secondTime: route761PData.secondTime
+            });
+        } else {
+            updateRowNoData(5);
         }
         
         // Keep existing K73 code
@@ -339,7 +374,7 @@ async function fetchMultipleBusData() {
                                     window.k73ExtraBuses = extraBuses;
                                 }
                                 
-                                updateRowData(2, lastValidK73Data);
+                                updateRowData(6, lastValidK73Data);
                                 foundK73Data = true;
                             }
                         }
@@ -357,22 +392,98 @@ async function fetchMultipleBusData() {
             console.error('Failed to fetch K73 data, status:', responseK73.status);
             updateK73RowNoData();
         }
+
+        const responseK66 = await fetch(apiK73Url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                language: 'zh',
+                routeName: 'K66'
+            })
+        });
+
+        if (responseK66.ok) {
+            try {
+                const dataK66 = await responseK66.json();
+                let foundK66Data = false;
+                
+                if (dataK66 && dataK66.busStop && Array.isArray(dataK66.busStop)) {
+                    const targetStop = dataK66.busStop.find(stop => stop.busStopId === 'K66-U070');
+                    
+                    if (targetStop && targetStop.bus && Array.isArray(targetStop.bus)) {
+                        const targetBuses = targetStop.bus.filter(bus =>
+                            bus.lineRef && bus.lineRef.includes('TTWNTT')
+                        );
+                        
+                        const sortedBuses = [...targetBuses].sort((a, b) => {
+                            const timeA = parseInt(a.arrivalTimeInSecond, 10) || parseInt(a.departureTimeInSecond, 10) || 999999;
+                            const timeB = parseInt(b.arrivalTimeInSecond, 10) || parseInt(b.departureTimeInSecond, 10) || 999999;
+                            return timeA - timeB;
+                        });
+                        
+                        const now = new Date();
+                        const validBuses = [];
+                        
+                        for (const bus of sortedBuses) {
+                            const arrivalSeconds = parseInt(bus.arrivalTimeInSecond, 10);
+                            const departureSeconds = parseInt(bus.departureTimeInSecond, 10);
+                            const timeSeconds = (!isNaN(arrivalSeconds) && arrivalSeconds < 108000)
+                                ? arrivalSeconds
+                                : departureSeconds;
+                            
+                            if (!isNaN(timeSeconds) && timeSeconds > 0) {
+                                const etaTime = new Date(now);
+                                etaTime.setSeconds(etaTime.getSeconds() + timeSeconds);
+                                validBuses.push(etaTime);
+                            }
+                        }
+                        
+                        if (validBuses.length > 0) {
+                            updateRowData(7, {
+                                route: 'K66',
+                                station: '教育路 (入大棠)',
+                                firstEtaTime: validBuses[0],
+                                secondEtaTime: validBuses.length > 1 ? validBuses[1] : null,
+                                hasSecondEta: validBuses.length > 1,
+                                type: 'bus'
+                            });
+                            foundK66Data = true;
+                        }
+                    }
+                }
+                
+                if (!foundK66Data) {
+                    updateRowNoData(7);
+                }
+            } catch (error) {
+                console.error('Error processing K66 data:', error);
+                updateRowNoData(7);
+            }
+        } else {
+            console.error('Failed to fetch K66 data, status:', responseK66.status);
+            updateRowNoData(7);
+        }
         
         // New code for all other routes
         const routes = [
             // Red box routes (Citybus)
-            { index: 4, route: '967', station: '慧景軒', url: 'https://rt.data.gov.hk/v2/transport/citybus/eta/CTB/003773/967' },
-            { index: 5, route: '969', station: '慧景軒', url: 'https://rt.data.gov.hk/v2/transport/citybus/eta/CTB/003773/969' },
-            { index: 6, route: '969', station: '晴彩樓', url: 'https://rt.data.gov.hk/v2/transport/citybus/eta/CTB/002059/969' },
+            { index: 9, route: '967', station: '慧景軒', url: 'https://rt.data.gov.hk/v2/transport/citybus/eta/CTB/003773/967' },
+            { index: 10, route: '969', station: '慧景軒', url: 'https://rt.data.gov.hk/v2/transport/citybus/eta/CTB/003773/969' },
+            { index: 11, route: '969', station: '晴彩樓', url: 'https://rt.data.gov.hk/v2/transport/citybus/eta/CTB/002059/969' },
             
             // Yellow box routes (KMB)
-            { index: 7, route: '269M', station: '晴碧樓', url: 'https://data.etabus.gov.hk/v1/transport/kmb/eta/797CC0222B9EFBEF/269M/1' },
-            { index: 8, route: '265M', station: '晴彩樓', url: 'https://data.etabus.gov.hk/v1/transport/kmb/eta/FE801C732EC6EA42/265M/1' },
-            { index: 9, route: '269C', station: '麗湖居', url: 'https://data.etabus.gov.hk/v1/transport/kmb/eta/7BB395B6FE66E102/269C/1' },
-            { index: 10, route: '276B', station: '慧景軒', url: 'https://data.etabus.gov.hk/v1/transport/kmb/eta/A6C169DA579FC45B/276B/1' },
-            { index: 11, route: '276B', station: '彩園總站', url: 'https://data.etabus.gov.hk/v1/transport/kmb/eta/26A1D2969A15C3AF/276B/1', filter: '天富' },
-            { index: 12, route: '265B', station: '晴彩樓', url: 'https://data.etabus.gov.hk/v1/transport/kmb/eta/FE801C732EC6EA42/265B/1' },
-            { index: 13, route: '69', station: '濕地公園路', url: 'https://data.etabus.gov.hk/v1/transport/kmb/eta/79C0E2525F4B50FF/69/1' }
+            { index: 12, route: '269M', station: '慧景軒', url: 'https://data.etabus.gov.hk/v1/transport/kmb/eta/A6C169DA579FC45B/269M/1' },
+            { index: 13, route: '269M', station: '耀榮里', url: 'https://data.etabus.gov.hk/v1/transport/kmb/eta/4173C3AEE8B6F33E/269M/1' },
+            { index: 14, route: '265M', station: '晴彩樓', url: 'https://data.etabus.gov.hk/v1/transport/kmb/eta/FE801C732EC6EA42/265M/1' },
+            { index: 15, route: '265M', station: '耀榮里', url: 'https://data.etabus.gov.hk/v1/transport/kmb/eta/4A68E282FEB3DAED/265M/1' },
+            { index: 16, route: '269C', station: '麗湖居', url: 'https://data.etabus.gov.hk/v1/transport/kmb/eta/7BB395B6FE66E102/269C/1' },
+            { index: 17, route: '276B', station: '慧景軒', url: 'https://data.etabus.gov.hk/v1/transport/kmb/eta/A6C169DA579FC45B/276B/1' },
+            { index: 18, route: '276B', station: '彩園總站', url: 'https://data.etabus.gov.hk/v1/transport/kmb/eta/26A1D2969A15C3AF/276B/1', filter: '天富' },
+            { index: 19, route: '265B', station: '晴彩樓', url: 'https://data.etabus.gov.hk/v1/transport/kmb/eta/FE801C732EC6EA42/265B/1' },
+            { index: 20, route: '69', station: '濕地公園路', url: 'https://data.etabus.gov.hk/v1/transport/kmb/eta/79C0E2525F4B50FF/69/1' },
+            { index: 21, route: '69', station: '大棠路', url: 'https://data.etabus.gov.hk/v1/transport/kmb/eta/78AD2432201EF5EE/69/1' }
         ];
         
         // Fetch data for all routes in parallel
@@ -391,13 +502,20 @@ async function fetchMultipleBusData() {
                     busData = busData.filter(item => item.dest_tc === route.filter);
                 }
                 
-                if (busData && busData.length > 0) {
-                    const firstEta = new Date(busData[0].eta);
+                const now = new Date();
+                const validBusData = busData
+                    ? busData
+                        .map(item => ({ ...item, etaDate: item.eta ? new Date(item.eta) : null }))
+                        .filter(item => item.etaDate && !isNaN(item.etaDate.getTime()) && item.etaDate > now)
+                    : [];
+                
+                if (validBusData.length > 0) {
+                    const firstEta = validBusData[0].etaDate;
                     let secondEta = null;
                     let hasSecondEta = false;
                     
-                    if (busData.length > 1) {
-                        secondEta = new Date(busData[1].eta);
+                    if (validBusData.length > 1) {
+                        secondEta = validBusData[1].etaDate;
                         hasSecondEta = true;
                     }
                     
@@ -410,19 +528,51 @@ async function fetchMultipleBusData() {
                         type: 'bus'
                     });
                 } else {
-                    if (route.route === '69') {
-                        update69RowNoData();
-                    } else {
-                        updateRowNoData(route.index - 1);
-                    }
+                    updateRowNoData(route.index - 1);
                 }
             } catch (error) {
                 console.error(`Error fetching ${route.route} data:`, error);
-                if (route.route === '69') {
-                    update69RowNoData();
+                updateRowNoData(route.index - 1);
+            }
+        }));
+
+        const mtrRoutes = [
+            { index: 1, route: 'TML', station: '天水圍 → 屯門', line: 'TML', sta: 'TIS', direction: 'UP', dest: 'TUM' },
+            { index: 2, route: 'TML', station: '天水圍 → 烏溪沙', line: 'TML', sta: 'TIS', direction: 'DOWN', dest: 'WKS' },
+            { index: 3, route: 'TML', station: '屯門 → 烏溪沙', line: 'TML', sta: 'TUM', direction: 'DOWN', dest: 'WKS' }
+        ];
+
+        await Promise.all(mtrRoutes.map(async (route) => {
+            try {
+                const url = `https://rt.data.gov.hk/v1/transport/mtr/getSchedule.php?line=${route.line}&sta=${route.sta}`;
+                const response = await fetch(url);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const data = await response.json();
+                const stationKey = `${route.line}-${route.sta}`;
+                const stationData = data.data && data.data[stationKey];
+                const directionData = stationData && Array.isArray(stationData[route.direction])
+                    ? stationData[route.direction]
+                    : [];
+
+                const trains = directionData
+                    .filter(train => train.valid !== 'N' && (!route.dest || train.dest === route.dest))
+                    .slice(0, 2);
+
+                if (trains.length > 0) {
+                    updateMtrRowData(route.index - 1, {
+                        route: route.route,
+                        station: route.station,
+                        trains: trains
+                    });
                 } else {
                     updateRowNoData(route.index - 1);
                 }
+            } catch (error) {
+                console.error(`Error fetching ${route.route} ${route.station} data:`, error);
+                updateRowNoData(route.index - 1);
             }
         }));
         
@@ -441,8 +591,8 @@ async function fetchMultipleBusData() {
         update69RowNoData();
         
         // Mark all other rows as no data when there's an error
-        for (let i = 0; i < 13; i++) {
-            if (i !== 2 && i !== 12) { // Skip K73 and 69 as they're handled above
+        for (let i = 0; i < 21; i++) {
+            if (i !== 6) { // Skip K73 as it's handled above
                 updateRowNoData(i);
             }
         }
@@ -467,8 +617,10 @@ function updateRowNoData(rowIndex) {
             el.textContent = 'n/a';
             el.classList.add('na-text'); // Add class for styling
             
+            const routeText = row.querySelector('.route-number')?.textContent.trim();
+            
             // For K73 and 69, ensure we use the dark red styling
-            if (rowIndex === 2 || rowIndex === 12) {
+            if (rowIndex === 6 || routeText === '69') {
                 el.style.color = '#cc0000'; // Dark red
                 el.style.fontWeight = 'bold';
             }
@@ -481,7 +633,7 @@ function updateRowNoData(rowIndex) {
 
 // Special handler for K73 no data case
 function updateK73RowNoData() {
-    const row = document.querySelector('.arrivals-table tbody tr:nth-child(3)'); // K73 is row 3 (index 2)
+    const row = document.querySelector('.arrivals-table tbody tr:nth-child(7)'); // K73 is row 7 (index 6)
     if (row) {
         const timeCell = row.querySelector('td:nth-child(2)');
         const nextTimeCell = row.querySelector('td:nth-child(3)');
@@ -496,8 +648,10 @@ function updateK73RowNoData() {
 
 // Special handler for 69 no data case
 function update69RowNoData() {
-    const row = document.querySelector('.arrivals-table tbody tr:nth-child(13)'); // 69 is row 13 (index 12)
-    if (row) {
+    const rows = [...document.querySelectorAll('.arrivals-table tbody tr')]
+        .filter(row => row.querySelector('.route-number')?.textContent.trim() === '69');
+    
+    rows.forEach(row => {
         const timeCell = row.querySelector('td:nth-child(2)');
         const nextTimeCell = row.querySelector('td:nth-child(3)');
         
@@ -506,7 +660,7 @@ function update69RowNoData() {
             timeCell.innerHTML = '<span class="minutes na-text" style="color:#cc0000;font-weight:bold;">n/a</span>';
             nextTimeCell.innerHTML = '<span class="minutes na-text" style="color:#cc0000;font-weight:bold;">n/a</span>';
         }
-    }
+    });
 }
 
 // Function to update a specific row by index
@@ -590,6 +744,48 @@ function updateRowData(rowIndex, data) {
             fullTimeElements[1].textContent = '';
         }
     }
+}
+
+function updateMtrRowData(rowIndex, data) {
+    const rows = document.querySelector('.arrivals-table').querySelectorAll('tr');
+    if (rowIndex >= rows.length) return;
+
+    const row = rows[rowIndex];
+    const routeNumber = row.querySelector('.route-number');
+    const stationName = row.querySelector('.station-name');
+    const timeCells = row.querySelectorAll('td.time');
+
+    if (routeNumber) routeNumber.textContent = data.route;
+    if (stationName) stationName.textContent = data.station;
+
+    timeCells.forEach((cell, index) => {
+        const train = data.trains[index];
+        cell.innerHTML = '';
+
+        const minutesSpan = document.createElement('span');
+        minutesSpan.className = 'minutes';
+
+        if (train) {
+            const minutesUntil = parseInt(train.ttnt, 10);
+
+            if (!isNaN(minutesUntil)) {
+                if (minutesUntil <= 0) {
+                    minutesSpan.textContent = 'now';
+                    minutesSpan.classList.add('now-text');
+                } else {
+                    minutesSpan.textContent = `${minutesUntil} ${minutesUntil === 1 ? 'min' : 'mins'}`;
+                }
+            } else {
+                minutesSpan.textContent = 'n/a';
+                minutesSpan.classList.add('na-text');
+            }
+        } else {
+            minutesSpan.textContent = 'n/a';
+            minutesSpan.classList.add('na-text');
+        }
+
+        cell.appendChild(minutesSpan);
+    });
 }
 
 // Function to update LRT rows that have a different time format
@@ -677,8 +873,76 @@ function updateLrtRow(rowIndex, data) {
 
 // Update the existing document.addEventListener to call both functions
 document.addEventListener('DOMContentLoaded', function() {
+    initListSwitcher();
     fetchMultipleBusData();
 });
+
+function initListSwitcher() {
+    const container = document.querySelector('.container');
+    const tableContainer = document.querySelector('.table-container');
+    const rows = document.querySelectorAll('.arrivals-table tbody tr');
+    const tabs = document.querySelectorAll('.view-tab');
+    let touchStartX = null;
+    let touchStartY = null;
+    
+    rows.forEach((row, index) => {
+        row.classList.toggle('west-list', index < 6);
+        row.classList.toggle('bus-list', index >= 6);
+    });
+    
+    function setView(view) {
+        const isBus = view === 'bus';
+        container.classList.toggle('show-bus', isBus);
+        container.classList.toggle('show-west', !isBus);
+        
+        tabs.forEach(tab => {
+            const active = tab.dataset.view === view;
+            tab.classList.toggle('active', active);
+            tab.setAttribute('aria-pressed', active ? 'true' : 'false');
+        });
+    }
+    
+    tabs.forEach(tab => {
+        tab.addEventListener('click', () => setView(tab.dataset.view));
+    });
+    
+    function recordSwipeStart(clientX, clientY) {
+        touchStartX = clientX;
+        touchStartY = clientY;
+    }
+    
+    function completeSwipe(clientX, clientY) {
+        if (touchStartX === null || touchStartY === null) return;
+        
+        const deltaX = clientX - touchStartX;
+        const deltaY = clientY - touchStartY;
+        
+        touchStartX = null;
+        touchStartY = null;
+        
+        if (Math.abs(deltaX) < 45 || Math.abs(deltaX) < Math.abs(deltaY)) return;
+        
+        setView(deltaX < 0 ? 'west' : 'bus');
+    }
+    
+    tableContainer.addEventListener('touchstart', event => {
+        const touch = event.changedTouches[0];
+        recordSwipeStart(touch.clientX, touch.clientY);
+    }, { passive: true });
+    
+    tableContainer.addEventListener('touchend', event => {
+        const touch = event.changedTouches[0];
+        completeSwipe(touch.clientX, touch.clientY);
+    }, { passive: true });
+    
+    tableContainer.addEventListener('pointerdown', event => {
+        recordSwipeStart(event.clientX, event.clientY);
+    });
+    
+    tableContainer.addEventListener('pointerup', event => {
+        completeSwipe(event.clientX, event.clientY);
+    });
+}
 
 // Update the setInterval to refresh all data
 setInterval(() => {
@@ -863,8 +1127,8 @@ async function fetchK73Data() {
                             window.k73ExtraBuses = extraBuses;
                         }
                         
-                        // Update K73 row (row index 2)
-                        updateRowData(2, lastValidK73Data);
+                        // Update K73 row (row index 6)
+                        updateRowData(6, lastValidK73Data);
                         
                         foundK73Data = true;
                         return true;
@@ -906,7 +1170,7 @@ async function fetchK73Data() {
                     lastValidK73Data.secondEtaTime = null;
                     lastValidK73Data.hasSecondEta = false;
                     
-                    updateRowData(2, shiftedData);
+                    updateRowData(6, shiftedData);
                     console.log("Successfully shifted using lastValidK73Data second bus");
                     return true;
                 }
@@ -934,7 +1198,7 @@ async function fetchK73Data() {
                             type: 'bus'
                         };
                         
-                        updateRowData(2, shiftedData);
+                        updateRowData(6, shiftedData);
                         console.log("Successfully shifted to next K73 bus from extras");
                         return true;
                     }
