@@ -538,8 +538,8 @@ async function fetchMultipleBusData() {
 
         const mtrRoutes = [
             { index: 1, route: 'TML', station: '天水圍 → 屯門', line: 'TML', sta: 'TIS', direction: 'UP', dest: 'TUM' },
-            { index: 2, route: 'TML', station: '天水圍 → 烏溪沙', line: 'TML', sta: 'TIS', direction: 'DOWN', dest: 'WKS' },
-            { index: 3, route: 'TML', station: '屯門 → 烏溪沙', line: 'TML', sta: 'TUM', direction: 'DOWN', dest: 'WKS' }
+            { index: 2, route: 'TML', station: '屯門 → 烏溪沙', line: 'TML', sta: 'TUM', direction: 'DOWN', dest: 'WKS' },
+            { index: 3, route: 'TML', station: '天水圍 → 烏溪沙', line: 'TML', sta: 'TIS', direction: 'DOWN', dest: 'WKS' }
         ];
 
         await Promise.all(mtrRoutes.map(async (route) => {

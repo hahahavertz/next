@@ -128,11 +128,7 @@ tr:nth-child(8) .route-number {
 
 .route-number.mtr-line {
     background-color: #9a5a2c;
-    border: 2px solid #f2c48e;
-}
-
-.route-number.mtr-line.tum-station {
-    border-color: #1d8cff;
+    border: 1px solid #7a4524;
 }
 
 /* Red boxes for 69 */
