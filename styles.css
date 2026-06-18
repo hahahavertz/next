@@ -70,6 +70,10 @@ body {
     border-bottom: none;
 }
 
+.arrivals-table tr.subtle-tint td {
+    background-color: #e5e9ee;
+}
+
 .arrivals-table td {
     padding: 12px 8px;
     vertical-align: top;
@@ -95,19 +99,24 @@ body {
 }
 
 /* Yellow boxes for 967, 969, 969 */
-tr:nth-child(9) .route-number,
-tr:nth-child(10) .route-number,
-tr:nth-child(11) .route-number {
+tr:nth-child(19) .route-number,
+tr:nth-child(20) .route-number,
+tr:nth-child(21) .route-number {
     background-color: #ffcc00;
     border: 1px solid #e6b800;
 }
 
-/* Blue boxes for 705, 706, 761P */
+/* Blue boxes for 705, 706 */
 tr:nth-child(4) .route-number,
-tr:nth-child(5) .route-number,
-tr:nth-child(6) .route-number {
+tr:nth-child(5) .route-number {
     background-color: #0088ff;
     border: 1px solid #0077dd;
+}
+
+/* Orange box for 761P */
+tr:nth-child(6) .route-number {
+    background-color: #f58220;
+    border: 1px solid #d56b10;
 }
 
 /* Purple boxes for K73 and K66 */
@@ -127,14 +136,14 @@ tr:nth-child(8) .route-number {
 }
 
 /* Red boxes for 69 */
-tr:nth-child(20) .route-number,
-tr:nth-child(21) .route-number {
+tr:nth-child(9) .route-number,
+tr:nth-child(10) .route-number {
     background-color: #ff3333;
     border: 1px solid #dd0000;
 }
 
 /* Red boxes are handled by the default .route-number style */
-/* This includes rows 7-12 (269M, 265M, 269C, 276B, 276B, 265B) */
+/* This includes KMB rows between 69 and Citybus. */
 
 .station-name {
     font-size: 0.85rem;
@@ -205,7 +214,7 @@ tr:nth-child(21) .route-number {
 
 /* Style for "now" text */
 .minutes:contains('now') {
-    color: #00ff00;
+    color: #00b84a;
 }
 
 /* Add a more specific selector to ensure it works */
@@ -214,12 +223,12 @@ tr:nth-child(21) .route-number {
 }
 
 .minutes:has-text('now') {
-    color: #00ff00;
+    color: #00b84a;
 }
 
 /* Style for "now" text */
 .now-text {
-    color: #00ff00;
+    color: #00b84a;
 }
 
 /* Style for "n/a" text - displayed in dark red */
@@ -234,8 +243,8 @@ tr:nth-child(21) .route-number {
 
 /* Special styling for K73 and 69 n/a text */
 tr:nth-child(7) .na-text,  /* K73 */
-tr:nth-child(20) .na-text, /* 69 */
-tr:nth-child(21) .na-text  /* 69 */ {
+tr:nth-child(9) .na-text,  /* 69 */
+tr:nth-child(10) .na-text  /* 69 */ {
     color: #cc0000;
     font-weight: bold;
 }

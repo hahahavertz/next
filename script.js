@@ -443,7 +443,7 @@ async function fetchMultipleBusData() {
                         if (validBuses.length > 0) {
                             updateRowData(7, {
                                 route: 'K66',
-                                station: '教育路 (入大棠)',
+                                station: '元朗商業中心 (教育路)',
                                 firstEtaTime: validBuses[0],
                                 secondEtaTime: validBuses.length > 1 ? validBuses[1] : null,
                                 hasSecondEta: validBuses.length > 1,
@@ -468,22 +468,22 @@ async function fetchMultipleBusData() {
         
         // New code for all other routes
         const routes = [
-            // Red box routes (Citybus)
-            { index: 9, route: '967', station: '慧景軒', url: 'https://rt.data.gov.hk/v2/transport/citybus/eta/CTB/003773/967' },
-            { index: 10, route: '969', station: '慧景軒', url: 'https://rt.data.gov.hk/v2/transport/citybus/eta/CTB/003773/969' },
-            { index: 11, route: '969', station: '晴彩樓', url: 'https://rt.data.gov.hk/v2/transport/citybus/eta/CTB/002059/969' },
+            // Citybus routes
+            { index: 19, route: '967', station: '慧景軒', url: 'https://rt.data.gov.hk/v2/transport/citybus/eta/CTB/003773/967' },
+            { index: 20, route: '969', station: '慧景軒', url: 'https://rt.data.gov.hk/v2/transport/citybus/eta/CTB/003773/969' },
+            { index: 21, route: '969', station: '晴彩樓', url: 'https://rt.data.gov.hk/v2/transport/citybus/eta/CTB/002059/969' },
             
-            // Yellow box routes (KMB)
-            { index: 12, route: '269M', station: '慧景軒', url: 'https://data.etabus.gov.hk/v1/transport/kmb/eta/A6C169DA579FC45B/269M/1' },
-            { index: 13, route: '269M', station: '耀榮里', url: 'https://data.etabus.gov.hk/v1/transport/kmb/eta/4173C3AEE8B6F33E/269M/1' },
-            { index: 14, route: '265M', station: '晴彩樓', url: 'https://data.etabus.gov.hk/v1/transport/kmb/eta/FE801C732EC6EA42/265M/1' },
-            { index: 15, route: '265M', station: '耀榮里', url: 'https://data.etabus.gov.hk/v1/transport/kmb/eta/4A68E282FEB3DAED/265M/1' },
-            { index: 16, route: '269C', station: '麗湖居', url: 'https://data.etabus.gov.hk/v1/transport/kmb/eta/7BB395B6FE66E102/269C/1' },
-            { index: 17, route: '276B', station: '慧景軒', url: 'https://data.etabus.gov.hk/v1/transport/kmb/eta/A6C169DA579FC45B/276B/1' },
-            { index: 18, route: '276B', station: '彩園總站', url: 'https://data.etabus.gov.hk/v1/transport/kmb/eta/26A1D2969A15C3AF/276B/1', filter: '天富' },
-            { index: 19, route: '265B', station: '晴彩樓', url: 'https://data.etabus.gov.hk/v1/transport/kmb/eta/FE801C732EC6EA42/265B/1' },
-            { index: 20, route: '69', station: '濕地公園路', url: 'https://data.etabus.gov.hk/v1/transport/kmb/eta/79C0E2525F4B50FF/69/1' },
-            { index: 21, route: '69', station: '大棠路', url: 'https://data.etabus.gov.hk/v1/transport/kmb/eta/78AD2432201EF5EE/69/1' }
+            // KMB routes
+            { index: 9, route: '69', station: '濕地公園路', url: 'https://data.etabus.gov.hk/v1/transport/kmb/eta/79C0E2525F4B50FF/69/1' },
+            { index: 10, route: '69', station: '大棠路', url: 'https://data.etabus.gov.hk/v1/transport/kmb/eta/78AD2432201EF5EE/69/1' },
+            { index: 11, route: '276B', station: '慧景軒', url: 'https://data.etabus.gov.hk/v1/transport/kmb/eta/A6C169DA579FC45B/276B/1' },
+            { index: 12, route: '276B', station: '彩園總站', url: 'https://data.etabus.gov.hk/v1/transport/kmb/eta/26A1D2969A15C3AF/276B/1', filter: '天富' },
+            { index: 13, route: '269M', station: '慧景軒', url: 'https://data.etabus.gov.hk/v1/transport/kmb/eta/A6C169DA579FC45B/269M/1' },
+            { index: 14, route: '269M', station: '耀榮里', url: 'https://data.etabus.gov.hk/v1/transport/kmb/eta/4173C3AEE8B6F33E/269M/1' },
+            { index: 15, route: '265M', station: '晴彩樓', url: 'https://data.etabus.gov.hk/v1/transport/kmb/eta/FE801C732EC6EA42/265M/1' },
+            { index: 16, route: '265M', station: '耀榮里', url: 'https://data.etabus.gov.hk/v1/transport/kmb/eta/4A68E282FEB3DAED/265M/1' },
+            { index: 17, route: '269C', station: '麗湖居', url: 'https://data.etabus.gov.hk/v1/transport/kmb/eta/7BB395B6FE66E102/269C/1' },
+            { index: 18, route: '265B', station: '晴彩樓', url: 'https://data.etabus.gov.hk/v1/transport/kmb/eta/FE801C732EC6EA42/265B/1' }
         ];
         
         // Fetch data for all routes in parallel
@@ -620,7 +620,7 @@ function updateRowNoData(rowIndex) {
             const routeText = row.querySelector('.route-number')?.textContent.trim();
             
             // For K73 and 69, ensure we use the dark red styling
-            if (rowIndex === 6 || routeText === '69') {
+            if (rowIndex === 6 || routeText.startsWith('69')) {
                 el.style.color = '#cc0000'; // Dark red
                 el.style.fontWeight = 'bold';
             }
@@ -649,7 +649,7 @@ function updateK73RowNoData() {
 // Special handler for 69 no data case
 function update69RowNoData() {
     const rows = [...document.querySelectorAll('.arrivals-table tbody tr')]
-        .filter(row => row.querySelector('.route-number')?.textContent.trim() === '69');
+        .filter(row => row.querySelector('.route-number')?.textContent.trim().startsWith('69'));
     
     rows.forEach(row => {
         const timeCell = row.querySelector('td:nth-child(2)');
@@ -693,8 +693,8 @@ function updateRowData(rowIndex, data) {
                 minutesElements[0].textContent = 'now';
                 minutesElements[0].classList.add('now-text');
             } else {
-                // Round to nearest minute
-                const minutesUntil = Math.round(diffSeconds / 60);
+                // Show completed whole minutes, matching the official app's countdown style.
+                const minutesUntil = Math.floor(diffSeconds / 60);
                 minutesElements[0].textContent = `${minutesUntil} ${minutesUntil === 1 ? 'min' : 'mins'}`;
             }
             
@@ -726,8 +726,8 @@ function updateRowData(rowIndex, data) {
                 minutesElements[1].textContent = 'now';
                 minutesElements[1].classList.add('now-text');
             } else {
-                // Round to nearest minute
-                const minutesUntil = Math.round(diffSeconds / 60);
+                // Show completed whole minutes, matching the official app's countdown style.
+                const minutesUntil = Math.floor(diffSeconds / 60);
                 minutesElements[1].textContent = `${minutesUntil} ${minutesUntil === 1 ? 'min' : 'mins'}`;
             }
             
