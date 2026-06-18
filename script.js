@@ -12,6 +12,18 @@ const sampleData = [
     { route: 'B42', station: 'South Terminal', arrival: '18 min', nextArrival: '28 min', type: 'train' }
 ];
 
+function freshUrl(url) {
+    const separator = url.includes('?') ? '&' : '?';
+    return `${url}${separator}_=${Date.now()}`;
+}
+
+function fetchFresh(url, options = {}) {
+    return fetch(freshUrl(url), {
+        ...options,
+        cache: 'no-store'
+    });
+}
+
 // Helper function to calculate minutes until arrival and format time display
 function formatArrivalTime(etaTime) {
     const now = new Date();
@@ -180,7 +192,7 @@ async function fetchMultipleBusData() {
     try {
         // Keep existing LRT routes 705 and 706 code
         const apiLrtUrl = 'https://rt.data.gov.hk/v1/transport/mtr/lrt/getSchedule?station_id=520';
-        const responseLrt = await fetch(apiLrtUrl);
+        const responseLrt = await fetchFresh(apiLrtUrl);
         if (responseLrt.ok) {
             const dataLrt = await responseLrt.json();
             
@@ -244,7 +256,7 @@ async function fetchMultipleBusData() {
         }
 
         const apiLrtTaiTongUrl = 'https://rt.data.gov.hk/v1/transport/mtr/lrt/getSchedule?station_id=590';
-        const responseLrtTaiTong = await fetch(apiLrtTaiTongUrl);
+        const responseLrtTaiTong = await fetchFresh(apiLrtTaiTongUrl);
         if (responseLrtTaiTong.ok) {
             const dataLrtTaiTong = await responseLrtTaiTong.json();
             let route761PData = { found: false, firstTime: 'n/a', secondTime: 'n/a' };
@@ -282,6 +294,7 @@ async function fetchMultipleBusData() {
         const apiK73Url = 'https://rt.data.gov.hk/v1/transport/mtr/bus/getSchedule';
         const responseK73 = await fetch(apiK73Url, {
             method: 'POST',
+            cache: 'no-store',
             headers: {
                 'Content-Type': 'application/json'
             },
@@ -395,6 +408,7 @@ async function fetchMultipleBusData() {
 
         const responseK66 = await fetch(apiK73Url, {
             method: 'POST',
+            cache: 'no-store',
             headers: {
                 'Content-Type': 'application/json'
             },
@@ -489,7 +503,7 @@ async function fetchMultipleBusData() {
         // Fetch data for all routes in parallel
         await Promise.all(routes.map(async (route) => {
             try {
-                const response = await fetch(route.url);
+                const response = await fetchFresh(route.url);
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
@@ -545,7 +559,7 @@ async function fetchMultipleBusData() {
         await Promise.all(mtrRoutes.map(async (route) => {
             try {
                 const url = `https://rt.data.gov.hk/v1/transport/mtr/getSchedule.php?line=${route.line}&sta=${route.sta}`;
-                const response = await fetch(url);
+                const response = await fetchFresh(url);
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
@@ -1022,6 +1036,7 @@ async function fetchK73Data() {
     const apiK73Url = 'https://rt.data.gov.hk/v1/transport/mtr/bus/getSchedule';
     const responseK73 = await fetch(apiK73Url, {
         method: 'POST',
+        cache: 'no-store',
         headers: {
             'Content-Type': 'application/json'
         },
