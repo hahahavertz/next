@@ -192,7 +192,7 @@ async function fetchMultipleBusData() {
     try {
         // Keep existing LRT routes 705 and 706 code
         const apiLrtUrl = 'https://rt.data.gov.hk/v1/transport/mtr/lrt/getSchedule?station_id=520';
-        const responseLrt = await fetchFresh(apiLrtUrl);
+        const responseLrt = await fetch(apiLrtUrl);
         if (responseLrt.ok) {
             const dataLrt = await responseLrt.json();
             
@@ -256,7 +256,7 @@ async function fetchMultipleBusData() {
         }
 
         const apiLrtTaiTongUrl = 'https://rt.data.gov.hk/v1/transport/mtr/lrt/getSchedule?station_id=590';
-        const responseLrtTaiTong = await fetchFresh(apiLrtTaiTongUrl);
+        const responseLrtTaiTong = await fetch(apiLrtTaiTongUrl);
         if (responseLrtTaiTong.ok) {
             const dataLrtTaiTong = await responseLrtTaiTong.json();
             let route761PData = { found: false, firstTime: 'n/a', secondTime: 'n/a' };
@@ -294,7 +294,6 @@ async function fetchMultipleBusData() {
         const apiK73Url = 'https://rt.data.gov.hk/v1/transport/mtr/bus/getSchedule';
         const responseK73 = await fetch(apiK73Url, {
             method: 'POST',
-            cache: 'no-store',
             headers: {
                 'Content-Type': 'application/json'
             },
@@ -408,7 +407,6 @@ async function fetchMultipleBusData() {
 
         const responseK66 = await fetch(apiK73Url, {
             method: 'POST',
-            cache: 'no-store',
             headers: {
                 'Content-Type': 'application/json'
             },
@@ -559,7 +557,7 @@ async function fetchMultipleBusData() {
         await Promise.all(mtrRoutes.map(async (route) => {
             try {
                 const url = `https://rt.data.gov.hk/v1/transport/mtr/getSchedule.php?line=${route.line}&sta=${route.sta}`;
-                const response = await fetchFresh(url);
+                const response = await fetch(url);
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
@@ -1036,7 +1034,6 @@ async function fetchK73Data() {
     const apiK73Url = 'https://rt.data.gov.hk/v1/transport/mtr/bus/getSchedule';
     const responseK73 = await fetch(apiK73Url, {
         method: 'POST',
-        cache: 'no-store',
         headers: {
             'Content-Type': 'application/json'
         },
