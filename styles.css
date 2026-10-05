@@ -99,9 +99,9 @@ body {
 }
 
 /* Yellow boxes for 967, 969, 969 */
-tr:nth-child(19) .route-number,
 tr:nth-child(20) .route-number,
-tr:nth-child(21) .route-number {
+tr:nth-child(21) .route-number,
+tr:nth-child(22) .route-number {
     background-color: #ffcc00;
     border: 1px solid #e6b800;
 }
@@ -133,7 +133,8 @@ tr:nth-child(8) .route-number {
 
 /* Red boxes for 69 */
 tr:nth-child(9) .route-number,
-tr:nth-child(10) .route-number {
+tr:nth-child(10) .route-number,
+tr:nth-child(11) .route-number {
     background-color: #ff3333;
     border: 1px solid #dd0000;
 }
