@@ -99,9 +99,9 @@ body {
 }
 
 /* Yellow boxes for 967, 969, 969 */
-tr:nth-child(20) .route-number,
 tr:nth-child(21) .route-number,
-tr:nth-child(22) .route-number {
+tr:nth-child(22) .route-number,
+tr:nth-child(23) .route-number {
     background-color: #ffcc00;
     border: 1px solid #e6b800;
 }

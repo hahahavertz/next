@@ -481,9 +481,9 @@ async function fetchMultipleBusData() {
         // New code for all other routes
         const routes = [
             // Citybus routes
-            { index: 20, route: '967', station: '慧景軒', url: 'https://rt.data.gov.hk/v2/transport/citybus/eta/CTB/003773/967' },
-            { index: 21, route: '969', station: '慧景軒', url: 'https://rt.data.gov.hk/v2/transport/citybus/eta/CTB/003773/969' },
-            { index: 22, route: '969', station: '晴彩樓', url: 'https://rt.data.gov.hk/v2/transport/citybus/eta/CTB/002059/969' },
+            { index: 21, route: '967', station: '慧景軒', url: 'https://rt.data.gov.hk/v2/transport/citybus/eta/CTB/003773/967' },
+            { index: 22, route: '969', station: '慧景軒', url: 'https://rt.data.gov.hk/v2/transport/citybus/eta/CTB/003773/969' },
+            { index: 23, route: '969', station: '晴彩樓', url: 'https://rt.data.gov.hk/v2/transport/citybus/eta/CTB/002059/969' },
             
             // KMB routes
             { index: 9, route: '69', station: '濕地公園路', url: 'https://data.etabus.gov.hk/v1/transport/kmb/eta/79C0E2525F4B50FF/69/1' },
@@ -496,7 +496,8 @@ async function fetchMultipleBusData() {
             { index: 16, route: '265M', station: '晴彩樓', url: 'https://data.etabus.gov.hk/v1/transport/kmb/eta/FE801C732EC6EA42/265M/1' },
             { index: 17, route: '265M', station: '耀榮里', url: 'https://data.etabus.gov.hk/v1/transport/kmb/eta/4A68E282FEB3DAED/265M/1' },
             { index: 18, route: '269C', station: '麗湖居', url: 'https://data.etabus.gov.hk/v1/transport/kmb/eta/7BB395B6FE66E102/269C/1' },
-            { index: 19, route: '265B', station: '晴彩樓', url: 'https://data.etabus.gov.hk/v1/transport/kmb/eta/FE801C732EC6EA42/265B/1' }
+            { index: 19, route: '265B', station: '晴彩樓', url: 'https://data.etabus.gov.hk/v1/transport/kmb/eta/FE801C732EC6EA42/265B/1' },
+            { index: 20, route: '264X', station: '大棠路', url: 'https://data.etabus.gov.hk/v1/transport/kmb/eta/78AD2432201EF5EE/264X/1' }
         ];
         
         // Fetch data for all routes in parallel
